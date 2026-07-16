@@ -1,0 +1,35 @@
+{{- if .Values.keycloak.ingress.enabled }}
+{{- $keycloak_url := urlParse (include "graphwise-platform.keycloak.url" .) -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.keycloak.name }}
+  namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with (mergeOverwrite (deepCopy .Values.annotations) .Values.keycloak.ingress.annotations) }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.keycloak.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.keycloak.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ coalesce $keycloak_url.host }}
+      secretName: {{ required "TLS secret is required!" .Values.keycloak.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ $keycloak_url.host }}
+      http:
+        paths:
+          - path: {{ coalesce .Values.keycloak.ingress.path $keycloak_url.path }}
+            pathType: {{ .Values.keycloak.ingress.pathType }}
+            backend:
+              service:
+                name: keycloak-service
+                port:
+                  number: 8080
+{{- end }}

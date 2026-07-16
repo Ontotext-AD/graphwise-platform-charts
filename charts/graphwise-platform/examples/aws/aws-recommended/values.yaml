@@ -1,0 +1,269 @@
+#
+# Globals
+#
+
+global:
+  platform:
+    # You need to set this to the domain you have created for the Graphwise Platform
+    # This can be a hosted zone in Route53 with an A record to an application load balancer
+    url: https://graphwise-platform.example.com
+
+#
+# Elasticsearch
+#
+
+elasticsearch:
+  # For production with High Availability, set this to at least 3 replicas
+  replicas: 3
+
+  volumeClaimTemplate:
+    spec:
+      # Prefer a storage class that provisions gp3 EBS volumes
+      storageClassName: gp3
+      resources:
+        requests:
+          # Allocate more storage for production
+          storage: 100Gi
+
+  # Increase the resource limits for production load
+  resources:
+    requests:
+      memory: 12Gi
+    limits:
+      memory: 12Gi
+
+  # Specify this if you have dedicated nodes for Elasticsearch or shared ones for the platform
+  nodeSelector:
+  # node-pool: graphwise-platform
+
+  serviceAccount:
+    # If you are using Pod Identity, you don't need to annotate the ServiceAccount
+    # Otherwise, for IRSA, you must annotate the ServiceAccount with an IAM role ARN
+    annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<ROLE_NAME>
+
+  entitlementPolicy:
+    # Enable if you plan on using Pod Identity.
+    # Otherwise, for IRSA, you must mount the ServiceAccount token via volumes and volumeMounts
+    enabled: true
+
+elasticsearch_snapshots:
+  enabled: true
+
+  snapshots:
+    enabled: true
+    # Create a snapshot every day at midnight
+    schedule: 0 0 0 * * ?
+    expireAfter: 30d
+    # Specify an S3 bucket to store Elasticsearch snapshots in
+    # Depending on IRSA or Pod Identity, the service account token of Elasticsearch should federate permissions to the bucket
+    type: s3
+    store: graphwise-platform-backups-1111-2222-3333
+    prefix: elasticsearch
+
+#
+# Keycloak
+#
+
+keycloak:
+  # For production with High Availability, set this to at least 2 replicas
+  replicas: 2
+
+  # Increase the resource limits for production load
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+  # Specify this if you have dedicated nodes for Keycloak or shared ones for the platform
+  nodeSelector:
+  # node-pool: graphwise-platform
+
+keycloak_postgres:
+  # For production with High Availability, set this to at least 3 replicas
+  replicas: 3
+
+  storage:
+    # Prefer a storage class that provisions gp3 EBS volumes
+    storageClassName: gp3
+    # Allocate more storage for production
+    size: 20Gi
+
+  backups:
+    enabled: true
+    # Specify an S3 bucket to store PostgreSQL backups in
+    # Depending on IRSA or Pod Identity, the service account token should federate permissions to the bucket
+    destination: s3://graphwise-platform-backups-1111-2222-3333/keycloak
+    # Trigger a backup every day at midnight
+    schedule: 0 0 0 * * *
+    retention: 30d
+    s3Credentials:
+      inheritFromIAMRole: true
+
+  # Increase the resource limits for production load
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
+
+  # Specify this if you have dedicated nodes for Keycloak PostgreSQL or shared ones for the platform
+  nodeSelector:
+  # node-pool: graphwise-platform
+
+  serviceAccountTemplate:
+    # If you are using Pod Identity, you don't need to annotate the ServiceAccount
+    # Otherwise, for IRSA, you must annotate the ServiceAccount with an IAM role ARN
+    annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<ROLE_NAME>
+
+#
+# GraphDB
+#
+
+graphdb:
+  # For production with High Availability, set this to at least 3 replicas
+  replicas: 3
+
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      spec:
+        # Prefer a storage class that provisions gp3 EBS volumes
+        # If possible, use a separate storage class for GraphDB that provisions volumes with higher IOPS and throughput
+        storageClassName: gp3
+        resources:
+          requests:
+            # Allocate more storage for production
+            storage: 100Gi
+
+  backup:
+    enabled: true
+    type: cloud
+    # Create a backup every day at midnight
+    schedule: 0 0 * * *
+    timezone: Utc
+    cloud:
+      # Specify an S3 bucket to store GraphDB backups in
+      # Depending on IRSA or Pod Identity, the service account token should federate permissions to the bucket
+      bucketUri: s3:///graphwise-platform-backups-1111-2222-3333/graphdb/${BACKUP_NAME}
+
+  # Specify this if you have dedicated nodes for GraphDB or shared ones for the platform
+  nodeSelector:
+  # node-pool: graphwise-platform
+
+  # For production with High Availability, try to schedule GraphDB pods across zones and nodes
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      matchLabelKeys:
+        - pod-template-hash
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "graphdb.name" . }}'
+          app.kubernetes.io/instance: '{{ .Release.Name }}'
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      matchLabelKeys:
+        - pod-template-hash
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "graphdb.name" . }}'
+          app.kubernetes.io/instance: '{{ .Release.Name }}'
+
+  # Increase the resource limits for production load
+  resources:
+    requests:
+      memory: 12Gi
+    limits:
+      memory: 12Gi
+
+  serviceAccount:
+    create: true
+    # If you are using Pod Identity, you don't need to annotate the ServiceAccount
+    # Otherwise, for IRSA, you must annotate the ServiceAccount with an IAM role ARN
+    annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<ROLE_NAME>
+
+  proxy:
+    # For production with High Availability, set this to at least 3 replicas
+    replicas: 3
+
+    persistence:
+      enabled: true
+      volumeClaimTemplate:
+        spec:
+          # Prefer a storage class that provisions gp3 EBS volumes
+          storageClassName: gp3
+          resources:
+            requests:
+              # Allocate more storage for production
+              storage: 20Gi
+
+    # Specify this if you have dedicated nodes for GraphDB proxies or shared ones for the platform
+    nodeSelector:
+    # node-pool: graphwise-platform
+
+    # For production with High Availability, try to schedule GraphDB proxy pods across zones and nodes
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        matchLabelKeys:
+          - pod-template-hash
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: '{{ include "graphdb-proxy.name" . }}'
+            app.kubernetes.io/instance: '{{ .Release.Name }}'
+            app.kubernetes.io/component: graphdb-proxy
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        matchLabelKeys:
+          - pod-template-hash
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: '{{ include "graphdb-proxy.name" . }}'
+            app.kubernetes.io/instance: '{{ .Release.Name }}'
+            app.kubernetes.io/component: graphdb-proxy
+
+    # Increase the resource limits for production load
+    resources:
+      requests:
+        memory: 4Gi
+      limits:
+        memory: 4Gi
+
+#
+# Graph Modeling
+#
+
+graph-modeling:
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      spec:
+        # Prefer a storage class that provisions gp3 EBS volumes
+        storageClassName: gp3
+        resources:
+          requests:
+            # Allocate more storage for production
+            storage: 20Gi
+
+  # Specify this if you have dedicated nodes for Graph Modeling or shared ones for the platform
+  nodeSelector:
+  # node-pool: graphwise-platform
+
+  # Increase the resource limits for production load
+  resources:
+    requests:
+      memory: 12Gi
+    limits:
+      memory: 12Gi
+
+#
+# Graph Modeling addons are similar to Graph Modeling
+#

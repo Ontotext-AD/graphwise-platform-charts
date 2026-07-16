@@ -1,0 +1,10 @@
+apiVersion: v2
+name: keycloak-operator
+description: Keycloak Operator
+type: application
+version: 1.0.0
+appVersion: 25.0.6
+maintainers:
+  - name: Ontotext-AD
+    email: dnd@graphwise.ai
+    url: https://graphwise.ai

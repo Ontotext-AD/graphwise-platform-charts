@@ -1,0 +1,872 @@
+########################################################################################################################
+# Main configuration file for the Graphwise Platform Helm chart                                                        #
+# This is an umbrella chart that includes and configures the necessary sub-charts to work together                     #
+#                                                                                                                      #
+# To override a single property use --set                                                                              #
+# To override multiple, provide another values.yaml file with the -f flag                                              #
+# See https://helm.sh/docs/chart_template_guide/values_files/                                                          #
+########################################################################################################################
+
+########################################################################################################################
+# GLOBAL PARAMETERS
+########################################################################################################################
+
+#
+# Global parameters that are accessible by all sub-charts.
+#
+global:
+  # Globally accessible parameters for all platform components.
+  platform:
+    # The base URL for accessing the Graphwise Platform components.
+    # This must be a valid URL, including the protocol (http/https). It can also accept a context path if needed.
+    #
+    # The value is processed as a Helm template with the tpl function.
+    url: http://platform.127.0.0.1.nip.io
+
+  # Overrides image.registry for all components directly deployed by this chart as well as any sub-charts that reads
+  # this global parameter.
+  imageRegistry: ""
+
+  # Inserts image pull secret references.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/secret/#using-imagepullsecrets
+  #
+  # Example:
+  # imagePullSecrets:
+  #   - name: my-pull-secret
+  imagePullSecrets: []
+
+########################################################################################################################
+# COMMON PARAMETERS
+########################################################################################################################
+
+# Overrides the name of the chart affecting resources created directly by this chart.
+nameOverride: ""
+
+# Additional common labels to add to resources created directly by this chart.
+# To override the labels of the sub-charts, use their dedicated parameters.
+# Values are processed as Helm templates with the tpl function.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+labels: {}
+
+# Additional common annotations to add to resources created directly by this chart.
+# To override the annotations of the sub-charts, use their dedicated parameters.
+# Values are processed as Helm templates with the tpl function.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+annotations: {}
+
+# Additional objects to insert along with the release.
+# Values are processed as Helm templates with tpl function.
+# Ref: https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function
+extraObjects: []
+
+########################################################################################################################
+# SECRETS GENERATION
+########################################################################################################################
+
+# Kubernetes Secrets generation configurations.
+#
+# This enables automatic generation of the required Kubernetes Secrets for the Graphwise Platform components except
+# any of the licenses.
+#
+# By default, this is disabled. We recommend enabling it only for development purposes. For production prefer to create
+# any Secret objects outside the Helm release.
+secrets:
+  # Toggles the automatic generation of the required Kubernetes Secrets.
+  autogenerate: false
+  # When set to true, the Secrets will be preserved when uninstalling the Helm release.
+  preserve: true
+  # Defines how to name and refer to GraphDB Kubernetes Secret objects during secret generation.
+  graphdb:
+    adminCredentialsSecretName: graphdb-admin-credentials
+    provisionerCredentialsSecretName: graphdb-provisioner-credentials
+  # Defines how to name and refer to Graph Modeling Kubernetes Secret objects during secret generation.
+  graphModeling:
+    adminCredentialsSecretName: graph-modeling-admin-credentials
+    secretPropertiesSecretName: graph-modeling-secret-properties
+
+########################################################################################################################
+# GRAPHWISE PLATFORM DEPENDENCIES
+########################################################################################################################
+
+# Elasticsearch configurations.
+#
+# This chart deploys an Elasticsearch cluster using the official ECK operator by Elastic.
+# Ref: https://www.elastic.co/docs/reference/cloud-on-k8s/api-reference
+#
+# Elasticsearch is a vital dependency that is required by services in the Graphwise Platform for indexing and searching.
+#
+# You can use your own Elasticsearch but have to provide the necessary configuration overrides to the rest of the
+# components as well as make sure you use the required custom container image.
+elasticsearch:
+  # Toggles the deployment of the Elasticsearch cluster.
+  enabled: true
+
+  # Name and name prefix for the Elasticsearch cluster resources.
+  name: elasticsearch
+
+  # Image configurations for the Elasticsearch cluster.
+  # Ref: https://kubernetes.io/docs/concepts/containers/images/
+  image:
+    registry: docker.io
+    repository: ontotext/poolparty-elasticsearch
+    tag: 9.3.3
+    digest: ""
+
+  # Number of Elasticsearch nodes to deploy in the cluster.
+  # Set value to 1 to run a standalone Elasticsearch instance.
+  # Set to 2 or more to run a multi-node Elasticsearch cluster.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+  replicas: 1
+
+  # Elasticsearch configurations to pass to the Elasticsearch cluster.
+  # Values are processed as Helm templates with the tpl function.
+  # Ref: https://www.elastic.co/docs/reference/elasticsearch/configuration-reference
+  configuration:
+    node.store.allow_mmap: false
+
+  # Configurations for the Elasticsearch cluster Service.
+  service:
+    # Service type to create.
+    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    type: ClusterIP
+
+  # Persistence volume claim template configurations for the Elasticsearch cluster.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#volume-claim-templates
+  # Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  volumeClaimTemplate:
+    spec:
+      # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+      # storageClassName:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+
+  # Defines the PVC deletion policy to use when deleting or scaling the Elasticsearch cluster.
+  volumeClaimDeletePolicy: DeleteOnScaledownOnly
+
+  # Selector labels to match when selecting nodes.
+  # Values are processed as Helm templates with the tpl function.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+  # Configurations for the ServiceAccount for the Elasticsearch cluster.
+  # Ref: https://kubernetes.io/docs/concepts/security/service-accounts/
+  serviceAccount:
+    # Specifies whether a ServiceAccount should be created for Elasticsearch by this Helm chart.
+    create: true
+    # The name of the ServiceAccount to use.
+    #
+    # There are three cases to be aware of when using this:
+    # - If not set and create is true, the templates use elasticsearch.name as the name.
+    # - If set and create is true, it will use the provided name when creating the ServiceAccount
+    # - If set but create is false, it will use the provided ServiceAccount.
+    name: ""
+    # Additional annotations to add to the ServiceAccount resource when elasticsearch.serviceAccount.create is true.
+    # Values are processed as Helm templates with the tpl function.
+    annotations: {}
+
+  # Additional environment variables to provide to the Elasticsearch cluster.
+  # Values are processed as Helm templates with the tpl function.
+  env: []
+
+  # Resource configurations for the Elasticsearch cluster pods.
+  # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
+
+  # Additional volumes to set for the Elasticsearch cluster pods.
+  # Values are processed as Helm templates.
+  volumes: []
+
+  # Additional volumes to set for the Elasticsearch cluster pods.
+  # Values are processed as Helm templates.
+  volumeMounts: []
+
+  # Toggles the generation of an Elasticsearch entitlement-policy.yaml
+  # Use it when you deploy in a cloud-managed Kubernetes cluster and need to resolve ODIC tokens from Kubernetes.
+  # An example use case is when you need to upload snapshots to an S3 bucket and use AWS pod identity to get STS tokens.
+  entitlementPolicy:
+    enabled: false
+
+# Elasticsearch snapshot backup configurations.
+#
+# This chart deploys a Helm hook job that configures the Elasticsearch cluster to automatically take snapshots and
+# upload them to a compatible object storage.
+#
+# Ref: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+elasticsearch_snapshots:
+  # Toggles the Helm hook deployment.
+  enabled: false
+
+  # The URL where the Elasticsearch cluster is reachable.
+  # This depends on elasticsearch.name so in case you have updated it, you need to update this as well.
+  url: http://elasticsearch-es-http:9200
+
+  # Reference to the Kubernetes Secret object containing the credentials for the Elasticsearch cluster.
+  # This depends on elasticsearch.name so in case you have updated it, you need to update this as well.
+  security:
+    secret: elasticsearch-es-elastic-user
+    passwordKey: elastic
+
+  # Elasticsearch snapshots configurations.
+  snapshots:
+    enabled: true
+    schedule: 0 0 0 * * ?
+    repository: graphwise-platform
+    expireAfter: 30d
+    minCount: 7
+    maxCount: 30
+    # The type of the store. Supported values "s3" or "azure"
+    type: ""
+    # Address of the object store.
+    store: ""
+    # Object store prefix to use for managing snapshots.
+    prefix: ""
+
+# Keycloak configurations.
+#
+# This chart deploys a Keycloak identity provider using its official Kubernetes operator.
+#
+# Keycloak is a crucial dependency used by services in the Graphwise Platform for authentication and authorization
+# via OAuth2 and OpenID Connect.
+#
+# You can use your own Keycloak but have to provide the necessary configuration overrides to the rest of the
+# components as well as make sure you use the required custom container image.
+#
+# Ref: https://www.keycloak.org/archive/documentation-25.0.html
+# Ref: https://www.keycloak.org/operator/
+keycloak:
+  # Toggles the deployment of Keycloak.
+  enabled: true
+
+  # Name and name prefix for the Keycloak resources.
+  name: keycloak
+
+  # Keycloak and its operator have to be deployed in the same keycloak namespace.
+  namespace: keycloak
+
+  # Image configurations for Keycloak.
+  # Ref: https://kubernetes.io/docs/concepts/containers/images/
+  image:
+    registry: docker.io
+    repository: ontotext/poolparty-keycloak
+    tag: 2.3.0
+    digest: ""
+
+  # Number of Keycloak instances to deploy.
+  # Set value to 1 to run a standalone Keycloak instance.
+  # Set to 2 or more to run a multi-node Keycloak cluster.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+  replicas: 1
+
+  # Configurations for the Keycloak provider.
+  configuration:
+    # The base URL for accessing Keycloak.
+    # This must be a FQDN hostname, including any protocol and context path.
+    hostname: '{{ include "graphwise-platform.url" . }}/auth'
+    # Reference to a Secret object containing the credentials for the Keycloak admin user.
+    # This is used only during the initial Keycloak bootstrap which initializes the instance.
+    # Consecutive Keycloak restarts will not use the credentials from the Secret.
+    adminSecret:
+      name: keycloak-admin-credentials
+      adminUsernameKey: KEYCLOAK_ADMIN
+      adminPasswordKey: KEYCLOAK_ADMIN_PASSWORD
+    # Reference to a Secret object containing credentials for the Graph Modeling realm and clients.
+    # This is used only during the initial Keycloak bootstrap which initializes the instance and imports a dedicated
+    # realm for the Graphwise Platform.
+    # Consecutive Keycloak restarts will not use the credentials from the Secret.
+    graphModelingSecret:
+      name: keycloak-graph-modeling-secret-properties
+      adminPasswordKey: POOLPARTY_SUPER_ADMIN_PASSWORD
+      clientSecretKey: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+
+  # Additional environment variables to provide to the Keycloak pods.
+  # Values are processed as Helm templates with the tpl function.
+  env: []
+
+  # Ingress resource configurations for Keycloak.
+  #
+  # The Keycloak Ingress in this chart makes no assumptions of what Ingress controller is being used. It's up to you to
+  # define any specific annotations required by the controller implementation in your cluster.
+  ingress:
+    # Toggles the deployment of the Ingress resource.
+    enabled: false
+    # Reference to a specific Ingress controller.
+    # Leave empty to use the default Ingress controller in your cluster.
+    className: ""
+    # Additional annotations to add to the Ingress resource.
+    # Values are processed as Helm templates with the tpl function.
+    annotations: {}
+    # Ingress path override.
+    # If set, it overrides the path from keycloak.configuration.hostname
+    path: ""
+    # Sets the path type of the Keycloak Ingress resource.
+    # If you need to use ImplementationSpecific, make sure to set any annotations needed by the controller implementation.
+    pathType: Prefix
+    # Configures SSL termination on Ingress level.
+    # Ref: https://kubernetes.github.io/ingress-nginx/examples/tls-termination/
+    tls:
+      # Feature toggle for SSL termination. Disabled by default.
+      enabled: false
+      # Name of a Kubernetes Secret object with the key and certificate.
+      # If TLS is enabled, it's required to be provided, depending on the deployment.
+      # This could be an existing Secret or one that is not yet created.
+      secretName: ""
+
+  # Selector labels to match when selecting nodes.
+  # Values are processed as Helm templates with the tpl function.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+  # Resource configurations for the Keycloak pods.
+  # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+# PostgreSQL for Keycloak configurations.
+#
+# This chart deploys a PostgreSQL database cluster for Keycloak using the CNPG Kubernetes operator.
+#
+# You can use your own PostgreSQL but have to provide the necessary configuration overrides to the rest of the services
+# so they can connect to it.
+#
+# Ref: https://cloudnative-pg.io/docs
+keycloak_postgres:
+  # Toggles the deployment of the PostgreSQL database cluster.
+  enabled: true
+
+  # Name and name prefix for the PostgreSQL database cluster resources.
+  name: keycloak-postgres
+
+  # Number of database nodes to deploy in the PostgreSQL cluster.
+  # Set value to 1 to run a standalone PostgreSQL instance.
+  # Set to 2 or more to run a multi-node PostgreSQL cluster.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+  replicas: 1
+
+  # Image configurations for PostgreSQL.
+  # Ref: https://kubernetes.io/docs/concepts/containers/images/
+  image:
+    registry: ghcr.io
+    repository: cloudnative-pg/postgresql
+    tag: 16.14-standard-trixie
+    digest: ""
+
+  # Configurations for the Keycloak's PostgreSQL database cluster.
+  database:
+    name: keycloak
+    owner: keycloak
+
+  # Configurations for the PostgreSQL database cluster. Passed directly to the CustomResource.
+  postgresql:
+    parameters:
+      # Prevents filling up the disk with unprocessed WAL archives. Use -1 to disable.
+      # See https://cloudnative-pg.io/docs/1.28/replication/#capping-the-wal-size-retained-for-replication-slots
+      max_slot_wal_keep_size: 4GB
+
+  # Configurations for PostgreSQL backups via the CNPG barman plugin.
+  # The plugin is configured to upload backups in a compatible object store.
+  # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/
+  backups:
+    # Toggles the backup schedule.
+    enabled: false
+    # Object storage URL where the backups will be uploaded to.
+    # The plugin will also create a subfolder based on the PostgreSQL cluster name.
+    destination: ""
+    # The schedule for taking backups.
+    schedule: 0 0 0 * * *
+    # Defines the retention policy for the backups.
+    retention: 30d
+    # Credentials configuration when the chart is deployed in AWS and is configured to upload
+    # backups to S3.
+    # Values are processed as Helm templates with the tpl function.
+    # REf: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#aws-s3
+    s3Credentials: {}
+    # Credentials configuration when the chart is deployed in Azure and is configured to upload
+    # backups to Azure Blob Storage.
+    # Values are processed as Helm templates with the tpl function.
+    # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#azure-blob-storage
+    azureCredentials: {}
+    # Credentials configuration when the chart is deployed in Google Cloud and is configured to upload
+    # backups to Google Cloud Storage.
+    # Values are processed as Helm templates with the tpl function.
+    # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#google-cloud-storage
+    googleCredentials: {}
+
+  # Storage configurations for the PostgreSQL database cluster.
+  storage:
+    # Explicit storage class to use for the PostgreSQL database cluster.
+    # Leave empty to use the default storage class in your Kubernetes cluster.
+    storageClassName:
+    size: 10Gi
+
+  # Resource configurations for the PostgreSQL pods.
+  # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+  # Configurations for a ServiceAccount for the PostgreSQL database cluster.
+  # Value is processed as a Helm template with the tpl function.
+  serviceAccountTemplate: {}
+
+  # Selector labels to match when selecting nodes.
+  # Values are processed as Helm templates with the tpl function.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+
+########################################################################################################################
+# GRAPHWISE PLATFORM SERVICES
+########################################################################################################################
+
+# GraphDB configuration overrides
+#
+# This chart deploys a GraphDB cluster using the official Helm chart for GraphDB.
+#
+# GraphDB is a crucial component of the Graphwise Platform needed by the Graph Modeling service.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/Ontotext-AD/graphdb-helm/
+graphdb:
+  # Toggles the deployment of the GraphDB cluster.
+  enabled: true
+
+  # Overrides the default name of the GraphDB cluster for easier configurations in the rest of the services.
+  fullnameOverride: graphdb
+
+  # Number of GraphDB nodes to deploy in the GraphDB cluster.
+  # Set value to 1 to run a standalone GraphDB instance
+  # Set value to more than 1 to form a GraphDB cluster with GraphDB cluster proxies.
+  replicas: 1
+
+  # GraphDB requires a commercial license for operation.
+  license:
+    # Reference to a secret containing 'graphdb.license' file that will be mounted in the GraphDB pod.
+    existingSecret: graphdb-license
+    licenseFilename: graphdb.license
+
+  # GraphDB runtime configuration settings.
+  configuration:
+    # The external URL at which GraphDB should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/graphdb'
+
+    # GraphDB configuration properties.
+    # Values are processed as Helm templates.
+    properties:
+      graphdb.external-url.enforce.transactions: false
+
+  # GraphDB security configuration settings.
+  security:
+    # Toggles the security features in GraphDB.
+    enabled: true
+
+    # Reference to a Secret object with the initial users to provision to GraphDB before starting for the first time.
+    initialUsers:
+      existingSecret: graphdb-initial-users
+      secretKey: users.js
+
+    # Reference to a Secret object with the GraphDB provisioner user credentials.
+    #
+    # Note: This user must be present in the initial users as well. But because the initial users are in BCyrpt format,
+    # we need this one for different Kubernetes jobs to be able to authenticate in GraphDB.
+    provisioner:
+      existingSecret: graphdb-provisioner-token
+      tokenKey: GRAPHDB_AUTH_TOKEN
+
+  # GraphDB cluster configuration settings.
+  cluster:
+    # Reference to a Secret object with the cluster secret token for encrypting GraphDB cluster communication.
+    token:
+      existingSecret: graphdb-cluster-token
+      secretKey: GRAPHDB_CLUSTER_TOKEN
+    # We disable the following jobs because they are not needed during normal single node or cluster
+    # operatioons, only for scaling up and down.
+    jobs:
+      scaleCluster:
+        enabled: false
+      patchCluster:
+        enabled: false
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  # Persistence configurations for GraphDB.
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      spec:
+        # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+        # storageClassName:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+
+  # GraphDB configurations for scheduling backups in a compatible object storage.
+  # Refer to the official chart for further details.
+  backup:
+    enabled: false
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the GraphDB containers.
+  # For resizing to your needs, refer to the GraphDB documentation https://graphdb.ontotext.com/documentation/11.4/requirements.html
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
+
+  # ServiceAccount configurations for the GraphDB containers.
+  serviceAccount:
+    create: true
+
+  # GraphDB proxy configuration overrides
+  #
+  # GraphDB cluster proxies are used to route requests to the active GraphDB leader node.
+  # They are deployed when GraphDB replicas > 1
+  proxy:
+    fullnameOverride: graphdb-proxy
+
+    # Taken into consideration only when GraphDB replicas > 1
+    replicas: 1
+
+    # GraphDB proxy persistence settings.
+    persistence:
+      enabled: true
+      volumeClaimTemplate:
+        spec:
+          # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+          # storageClassName:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+    # Resource configurations for the GraphDB proxy containers.
+    # For resizing to your needs, refer to the GraphDB documentation https://graphdb.ontotext.com/documentation/11.4/requirements.html
+    resources:
+      requests:
+        memory: 2Gi
+      limits:
+        memory: 2Gi
+
+# Graph Modeling configuration overrides (fka PoolParty)
+#
+# This chart deploys the Graph Modeling service using its official Helm chart.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+graph-modeling:
+  # Toggles the deployment of the Graph Modeling service.
+  enabled: true
+
+  # Overrides the default name of the Graph Modeling service for easier configurations in the rest of the services.
+  fullnameOverride: graph-modeling
+
+  # The Graph Modeling requires a commercial license for operation.
+  license:
+    # Reference to a secret containing 'poolparty.key' file that will be mounted in the Graph Modeling pod.
+    existingSecret: graph-modeling-license
+    licenseFilename: poolparty.key
+
+  # Graph Modeling runtime configuration settings.
+  configuration:
+    # The external URL at which Graph Modeling should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}'
+
+    # Graph Modeling configuration properties.
+    properties:
+      POOLPARTY_SERVER_PORT: 8080
+      POOLPARTY_GRAPHDB_URL: http://graphdb:7200
+      POOLPARTY_INDEX_URL: http://elasticsearch-es-http:9200
+      POOLPARTY_KEYCLOAK_AUTHURL: http://keycloak-service.keycloak:8080/auth/
+      # Used in the data
+      _POOLPARTY_URL_BASE_SCHEME: '{{ include "graphwise-platform.url" . }}'
+      _POOLPARTY_URL_BASE_VOCABULARY: '{{ include "graphwise-platform.url" . }}'
+      _POOLPARTY_URL_BASE_USER: '{{ include "graphwise-platform.url" . }}/user'
+      _POOLPARTY_URL_BASE_CONTEXT: '{{ include "graphwise-platform.url" . }}'
+
+    propertiesOverrides:
+      # Reference to an existing Secret resource containing sensitive Graph Modeling configuration settings.
+      existingSecret: graph-modeling-secret-properties
+
+  # Additional environment variables to be set in the Graph Modeling container.
+  # Note the references to the Kubernetes Secrets: If you have created them with different names, you need
+  # to update them here.
+  extraEnv:
+    - name: POOLPARTY_GRAPHDB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: graphdb-admin-credentials
+          key: username
+    - name: POOLPARTY_GRAPHDB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: graphdb-admin-credentials
+          key: password
+    - name: POOLPARTY_INDEX_USERNAME
+      value: elastic
+    - name: POOLPARTY_INDEX_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: elasticsearch-es-elastic-user
+          key: elastic
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  # Service configurations for the Graph Modeling service.
+  service:
+    ports:
+      http: 8080
+
+  containerPorts:
+    # Using the same port as the service.
+    http: 8080
+
+  # Persistence configurations for Graph Modeling.
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      spec:
+        # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+        # storageClassName:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the Graph Modeling pod.
+  resources:
+    requests:
+      memory: 4Gi
+    limits:
+      memory: 4Gi
+
+# ADF configuration overrides.
+#
+# ADF is an addon for the Graph Modeling service.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+adf:
+  # Toggles the deployment of the ADF service.
+  enabled: false
+
+  # Overrides the default name of the ADF service for easier configurations in the rest of the services.
+  fullnameOverride: adf
+
+  # ADF configuration settings.
+  configuration:
+    # The external URL at which ADF should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/ADF'
+
+    # ADF configuration properties.
+    properties:
+      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      POOLPARTY_URL: http://graph-modeling:8080
+      ADF_REQUIRE_UI_AUTHENTICATION: "true"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  # Additional environment variables to be set in the ADF container.
+  # Note the reference to the Kubernetes Secret: If you have created it with a different name, you need
+  # to update it here.
+  extraEnv:
+    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_PPT_CLIENTSECRET
+      valueFrom:
+        secretKeyRef:
+          name: graph-modeling-secret-properties
+          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+
+  # Persistence configurations for ADF.
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+      # storageClassName:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the ADF pod.
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+# GraphViews configuration overrides.
+#
+# GraphViews is an addon for the Graph Modeling service.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+graphviews:
+  # Toggles the deployment of the GraphViews service.
+  enabled: false
+
+  # Overrides the default name of the GraphViews service for easier configurations in the rest of the services.
+  fullnameOverride: graphviews
+
+  # GraphViews configuration settings.
+  configuration:
+    # The external URL at which GraphViews should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/GraphViews'
+    # GraphViews configuration properties.
+    properties:
+      PP_URL: http://graph-modeling:8080
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  # Additional environment variables to be set in the GraphViews container.
+  # Note the references to the Kubernetes Secrets: If you have created them with different names, you need
+  # to update them here.
+  extraEnv:
+    - name: PP_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: graph-modeling-admin-credentials
+          key: username
+    - name: PP_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: graph-modeling-admin-credentials
+          key: password
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the GraphViews pod.
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+
+# Semantic Workbench configuration overrides
+#
+# Semantic Workbench is an addon for the Graph Modeling service.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+semantic-workbench:
+  # Toggles the deployment of the Semantic Workbench service.
+  enabled: false
+
+  # Overrides the default name of the Semantic Workbench service for easier configurations in the rest of the services.
+  fullnameOverride: semantic-workbench
+
+  # The Semantic Workbench service requires a commerical license for operation.
+  # This usually is the same license as for the Graph Modeling service.
+  license:
+    # Reference to a secret containing 'poolparty.key' file that will be mounted in the Semantic Workbench pod.
+    existingSecret: graph-modeling-license
+    licenseFilename: poolparty.key
+
+  # Semantic Workbench configuration settings.
+  configuration:
+    # The external URL at which Semantic Workbench should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/SemanticWorkbench'
+
+    # Semantic Workbench configuration properties.
+    properties:
+      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      POOLPARTY_URL: http://graph-modeling:8080
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  # Additional environment variables to be set in the Semantic Workbench container.
+  # Note the reference to the Kubernetes Secret: If you have created it with a different name, you need
+  # to update it here.
+  extraEnv:
+    - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_PPT_CLIENTSECRET
+      valueFrom:
+        secretKeyRef:
+          name: graph-modeling-secret-properties
+          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+
+  # Persistence configurations for Semantic Workbench.
+  persistence:
+    enabled: true
+    volumeClaimTemplate:
+      spec:
+        # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+        # storageClassName:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the Semantic Workbench pod.
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 2Gi

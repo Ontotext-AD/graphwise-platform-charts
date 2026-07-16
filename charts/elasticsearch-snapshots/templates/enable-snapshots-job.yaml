@@ -1,0 +1,75 @@
+{{- if .Values.snapshots.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "elasticsearch-snapshots.fullname" . }}
+  labels:
+    {{- include "elasticsearch-snapshots.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": {{ .Values.snapshots.hook.when }}
+    "helm.sh/hook-delete-policy":  {{ .Values.snapshots.hook.delete_policy }}
+spec:
+  backoffLimit: {{ .Values.snapshots.hook.backoffLimit }}
+  template:
+    spec:
+      restartPolicy: {{ .Values.snapshots.hook.restartPolicy }}
+      {{- with .Values.snapshots.hook.nodeSelector }}
+      nodeSelector: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.securityContext }}
+      securityContext: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: utils
+          configMap:
+            name: {{ include "elasticsearch-snapshots.configmap.utils" . }}
+      containers:
+        - name: bootstrap-snapshots
+          image: {{ .Values.snapshots.hook.image }}
+          imagePullPolicy: {{ .Values.snapshots.hook.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ "ALL" ]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: ELASTIC_URL
+              value: {{ .Values.url }}
+            - name: ELASTIC_USERNAME
+              value: {{ .Values.security.passwordKey }}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.security.secret }}
+                  key: {{ .Values.security.passwordKey }}
+            - name: ELASTIC_SNAPSHOT_REPO
+              value: {{ .Values.snapshots.repository }}
+            - name: ELASTIC_SNAPSHOT_SCHEDULE
+              value: {{ include "elasticsearch-snapshots.snapshot.schedule" . }}
+            - name: ELASTIC_SNAPSHOT_STORE_TYPE
+              value: {{ .Values.snapshots.type }}
+            - name: ELASTIC_SNAPSHOT_STORE
+              value: {{ .Values.snapshots.store }}
+            - name: ELASTIC_SNAPSHOT_STORE_SETTING
+              value: {{ include "elasticsearch-snapshots.snapshot.store.setting" . }}
+            - name: ELASTIC_SNAPSHOT_PREFIX
+              value: {{ .Values.snapshots.prefix }}
+            - name: ELASTIC_SNAPSHOT_EXPIRE_AFTER
+              value: {{ .Values.snapshots.expireAfter }}
+            - name: ELASTIC_SNAPSHOT_MIN_COUNT
+              value: {{ .Values.snapshots.minCount | quote }}
+            - name: ELASTIC_SNAPSHOT_MAX_COUNT
+              value: {{ .Values.snapshots.maxCount | quote }}
+          {{- with .Values.snapshots.hook.resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: utils
+              mountPath: /tmp
+              readOnly: true
+          workingDir: /tmp
+          command: ["/bin/sh", "-c"]
+          args: ["sh /tmp/elasticsearch-utils.sh"]
+{{- end }}

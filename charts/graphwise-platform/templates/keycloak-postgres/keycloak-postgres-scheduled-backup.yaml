@@ -1,0 +1,22 @@
+{{- if and .Values.keycloak_postgres.enabled .Values.keycloak_postgres.backups.enabled -}}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ .Values.keycloak_postgres.name }}
+  namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  cluster:
+    name: {{ .Values.keycloak_postgres.name }}
+  schedule: {{ .Values.keycloak_postgres.backups.schedule }}
+  suspend: false
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+{{- end }}

@@ -1,0 +1,436 @@
+###############################################################################
+# Main configuration file                                                     #
+# To override single property use --set                                       #
+# To override multiple, provide another values-override.yaml with the -f flag #
+# See https://helm.sh/docs/chart_template_guide/values_files/                 #
+###############################################################################
+
+#########################
+# Global Configurations #
+#########################
+
+global:
+  # Overrides image.registry
+  # Can be used to override it globally when using umbrella charts.
+  imageRegistry: ""
+
+  # Inserts additional pull secret references together along with any from .Values.image.pullSecrets
+  # Can be used to override it globally when using umbrella charts.
+  # Values are processed as Helm templates.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/secret/#using-imagepullsecrets
+  #
+  # Example:
+  # imagePullSecrets:
+  #   - name: my-pull-secret
+  imagePullSecrets: []
+
+###############################
+#   Metadata Configurations   #
+# Naming and labels overrides #
+###############################
+
+# Overrides the name of the chart affecting the names of the Keycloak Operator resources.
+nameOverride: ""
+
+# Overrides the naming of all Keycloak Operator resources, effectively removing the chart's name and the release name prefix.
+# This override takes precedence over anything in .Values.nameOverride
+fullnameOverride: keycloak-operator
+
+# Overrides the deployment namespace in case of multi-namespace deployments, for example when using umbrella charts where some sub-charts should be
+# deployed in different namespaces.
+# This affects every resource deployed by this chart.
+# The default value is .Release.Namespace if this is left unspecified.
+namespaceOverride: ""
+
+# Additional common labels to add to all Keycloak Operator resources.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+#
+# Example:
+# labels:
+#   foo: bar
+#   some-label: {{ .Values.someValue }}
+labels: {}
+
+# Additional common annotations to add to all Keycloak Operator resources.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+#
+# Example:
+# annotations:
+#   foo: bar
+#   some-annotation: {{ .Values.someValue }}
+annotations: {}
+
+############################################
+# Keycloak Operator Image Configurations #
+############################################
+
+# Image configurations for Keycloak Operator service.
+# Ref: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  # The registry that hosts the Keycloak Operator image.
+  # The default is to pull it from the official Docker registry, but this can be overridden to pull from other public or private registries.
+  registry: quay.io
+
+  # The repository name of the Keycloak Operator image.
+  repository: keycloak/keycloak-operator
+
+  # Image tag that corresponds to the version of Keycloak Operator.
+  # By default, the chart uses .Chart.AppVersion to construct the full image name.
+  # Use this to override the value from .Chart.AppVersion and effectively deploy a custom Keycloak Operator version.
+  tag: ""
+
+  # Expected SHA256 digest of the used Keycloak Operator image, e.g. "sha256@abc"
+  # Use the digest to make sure you are always deploying the exact same Keycloak Operator image.
+  # Defining this would override .Chart.AppVersion and image.tag
+  digest: ""
+
+  # Defines the policy for pulling images
+  # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
+  pullPolicy: IfNotPresent
+
+  # Secrets for pulling Keycloak Operator's image from secured registries.
+  # Values are processed as Helm templates.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/secret/#using-imagepullsecrets
+  #
+  # Example:
+  # pullSecrets:
+  #   - name: my-pull-secret
+  pullSecrets: []
+
+##########################
+# Scaling Configurations #
+##########################
+
+# Number of Keycloak Operator pods to be deployed as part of the Deployment resource.
+# Note that currently, the Operator does not support more than a single replica.
+replicas: 1
+
+# Horizontal Pod Autoscaler configuration that can automatically scale the number of Keycloak Operator pods based on
+# resource utilization.
+# Ref: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+##########################
+# Service Configurations #
+##########################
+
+# Configurations for Keycloak Operator Service.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # Enables or disables the Service deployment
+  enabled: true
+  # Additional labels to append to the Service resource.
+  # Values are processed as Helm templates.
+  labels: {}
+  # Additional annotations to append to the Service resource.
+  # Values are processed as Helm templates.
+  annotations: {}
+  # Service type
+  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+  # Ports exposed by the Service.
+  # Note: If you want to add additional ports, use .Values.service.extraPorts.
+  ports:
+    # Port mapped to Keycloak Operator HTTP API.
+    http: 80
+  # Exposes the Service on a specific node port on the host machine when "serviceType: NodePort"
+  # If left undefined, K8S will pick a random port from the node port range of the cluster.
+  nodePort: ""
+  # Defines the policy for treating external ingress traffic.
+  # By default, Cluster does not preserve client IPs. Change to Local to preserve them.
+  # See https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  externalTrafficPolicy: ""
+  # NodePort used by external load balancers when the external traffic policy is set to Local.
+  # By default, Kubernetes will assign a random port, use this to override it.
+  healthCheckNodePort: ""
+  # Defines the class that should select a particular load balancer implementation.
+  # By default, Kubernetes will assign the cluster default implementation, use this to override it.
+  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class
+  loadBalancerClass: ""
+  # Source IP ranges for restricting external ingress traffic
+  loadBalancerSourceRanges: []
+  # External IP addresses at which the Service will be exposed
+  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+  externalIPs: []
+  # Additional ports to expose with the Service.
+  extraPorts: []
+
+##############################
+# Persistence Configurations #
+##############################
+
+# Configurations for an emptyDir volume for the /tmp folder in each Keycloak Operator container.
+# Because the default security context in .Values.securityContext configures the root filesystem to be in read-only mode, certain features
+# cannot create and write files in /tmp. If you don't use a read-only root filesystem, you can disable this with .Values.tempVolume.enabled
+tempVolume:
+  # Toggles the temp folder emptyDir volume creation.
+  # - If enabled, the StatefulSet will use an emptyDir volume for /tmp.
+  # - If disabled, the chart won't create and mount ephemeral volumes for /tmp.
+  enabled: false
+  # Default location of the temp directory inside the container where the temp volume will be mounted.
+  mountPath: /tmp
+  # Configurations for an emptyDir volume to be used for /tmp.
+  # Ref: https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/
+  emptyDir:
+    # Default emptyDir limit, override to your needs.
+    sizeLimit: 1Gi
+
+#############################
+# Deployment Configurations #
+#############################
+
+# Configures the strategy of updating Deployment Pods.
+# Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
+updateStrategy:
+  type: RollingUpdate
+
+# Changes the maximum number of revisions that are kept.
+revisionHistoryLimit: 10
+
+# Grace period in seconds before terminating the Pods.
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
+terminationGracePeriodSeconds: 120
+
+# Toggles the auto mounting of API credentials token into the Pods.
+# Enable this if you need to contact either the API server or need web identity credentials for federated authentication in cloud APIs.
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting
+automountServiceAccountToken: true
+
+# Overrides the default Kubernetes scheduler.
+# See https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/#specify-schedulers-for-pods
+schedulerName: ""
+
+# Overrides the Pod's DNS settings.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+dnsConfig: {}
+
+# Defines the Pod's policy for DNS resolution.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: ""
+
+# Name of an existing PriorityClass to assign, defining the importance of the pods compared to other pods in the cluster.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+priorityClassName: ""
+
+# Overrides the default Keycloak Operator container command.
+# Use only for troubleshooting!
+# See https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
+command: []
+
+# Overrides the default Keycloak Operator container command's arguments.
+# Use only for troubleshooting!
+# See https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
+args: []
+
+# Ports used by the Keycloak Operator container
+# Note: If you want to add additional ports, use .Values.extraContainerPorts.
+containerPorts:
+  # Port mapped to Keycloak Operator HTTP API.
+  http: 8080
+
+# Additional labels to append to the Pod definition.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+# Additional annotations to append to the Pod definition.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+
+###################################
+# Security Context Configurations #
+###################################
+
+# Defines privilege and access control settings for all containers in the Keycloak Operator Pod.
+# See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+podSecurityContext:
+#  runAsNonRoot: true
+#  runAsUser: 10001
+#  runAsGroup: 10001
+#  fsGroup: 10001
+#  fsGroupChangePolicy: OnRootMismatch
+#  seccompProfile:
+#    type: RuntimeDefault
+
+# Defines privilege and access control settings for the container running Keycloak Operator.
+# See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+securityContext:
+#  allowPrivilegeEscalation: false
+#  readOnlyRootFilesystem: true
+#  capabilities:
+#    drop: [ "ALL" ]
+#  seccompProfile:
+#    type: RuntimeDefault
+
+#############################
+# Scheduling Configurations #
+#############################
+
+# Selector labels to match when selecting nodes.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+# See https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+nodeSelector: {}
+
+# Node and pod affinity & anti affinity configurations for constraining the Pod scheduling.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+affinity: {}
+
+# Default podAntiAffinity rule ensuring that Keycloak Operator pods are scheduled on different Kubernetes nodes.
+#
+# Possible values for .Values.podAntiAffinity.preset are:
+# - "soft" (default) - Configures a preferredDuringSchedulingIgnoredDuringExecution rule.
+# - "hard" - Configures a requiredDuringSchedulingIgnoredDuringExecution rule.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+podAntiAffinity:
+  enabled: true
+  preset: soft
+  topology: kubernetes.io/hostname
+
+# List of taint tolerations.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+tolerations: []
+
+# Configurations for spreading Pods across different failure domains.
+# Values are processed as Helm templates.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: []
+
+##########################
+# Resource Configuration #
+##########################
+
+# Resource configurations for the Keycloak Operator containers.
+# Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    memory: 256Mi
+    cpu: 100m
+
+#########################
+# Probes Configurations #
+#########################
+
+# Ref: https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+
+# Configurations for the Keycloak Operator container startup probe.
+startupProbe:
+  httpGet:
+    path: /q/health/started
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+# Configurations for the Keycloak Operator container readiness probe.
+readinessProbe:
+  httpGet:
+    path: /q/health/ready
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+# Configurations for the Keycloak Operator container liveness probe.
+livenessProbe:
+  httpGet:
+    path: /q/health/live
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+########################################
+# Additional Deployment Configurations #
+########################################
+
+# Additional environment variables to be set for the Keycloak Operator containers.
+# Values are processed as Helm templates.
+extraEnvFrom: []
+
+# Additional environment variables to be set for the Keycloak Operator containers.
+# Values are processed as Helm templates.
+extraEnv: []
+
+# Additional volumes to be set for the Keycloak Operator Pod.
+# Values are processed as Helm templates.
+extraVolumes: []
+
+# Additional volume mounts to be set for the Keycloak Operator containers.
+# Values are processed as Helm templates.
+extraVolumeMounts: []
+
+# Additional init containers to be inserted after the provisioning init containers.
+# Values are processed as Helm templates.
+extraInitContainers: []
+
+# Additional Keycloak Operator container ports to expose.
+extraContainerPorts: {}
+
+# Additional containers to insert into the Keycloak Operator Pod, e.g. sidecar containers
+# Values are processed as Helm templates.
+extraContainers: []
+
+########################################
+# Pod Disruption Budget Configurations #
+########################################
+
+# Configurations for Keycloak Operator default Pod Disruption Budget.
+# Ref: https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 51%
+  maxUnavailable: ""
+
+##################################
+# Service Account Configurations #
+##################################
+
+# Configurations for the default ServiceAccount for Keycloak Operator.
+# Ref: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created for Keycloak Operator.
+  create: true
+
+  # The name of the ServiceAccount to use.
+  #
+  # There are three cases to be aware of when using this:
+  # - If not set and create is true, a name is generated using the fullname template
+  # - If set and create is true, it will use the provided name when creating the ServiceAccount
+  # - If set but create is false, it will use the provided ServiceAccount.
+  name: ""
+
+  # If .Values.serviceAccount.create is true, insert additional annotations to the created ServiceAccount.
+  # Values are processed as Helm templates.
+  annotations: {}
+
+#################################
+# Additional Kubernetes Objects #
+#################################
+
+# Additional objects to insert along with the release.
+# Values are processed as Helm templates with tpl function.
+# Ref: https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function
+extraObjects: []

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: elasticsearch-snapshots
+description: Provides snapshots configurations for Elasticsearch using the official APIs.
+type: application
+version: 1.0.0
+kubeVersion: ^1.34.0-0
+maintainers:
+  - name: Ontotext-AD
+    email: dnd@graphwise.ai
+    url: https://graphwise.ai
+sources:
+  - https://github.com/Ontotext-AD/graphwise-platform-charts
+keywords:
+  - elasticsearch
+  - snapshots

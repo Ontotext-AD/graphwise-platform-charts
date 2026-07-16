@@ -1,0 +1,33 @@
+{{- if and .Values.keycloak_postgres.enabled .Values.keycloak_postgres.backups.enabled -}}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ .Values.keycloak_postgres.name }}
+  namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  configuration:
+    destinationPath: {{ required "Object store destination is required" .Values.keycloak_postgres.backups.destination }}
+    {{- with .Values.keycloak_postgres.backups.s3Credentials }}
+    s3Credentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    {{- with .Values.keycloak_postgres.backups.azureCredentials }}
+    azureCredentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    {{- with .Values.keycloak_postgres.backups.googleCredentials }}
+    googleCredentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    wal:
+      compression: "gzip"
+    data:
+      compression: "gzip"
+  retentionPolicy: {{ .Values.keycloak_postgres.backups.retention }}
+{{- end }}
