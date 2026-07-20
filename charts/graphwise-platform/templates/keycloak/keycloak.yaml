@@ -1,0 +1,107 @@
+{{- if .Values.keycloak.enabled -}}
+{{- $keycloak_url := urlParse (include "graphwise-platform.keycloak.url" .) -}}
+#
+# Keycloak cluster for the Graphwise Platform.
+#
+# Note that this should be applied within the same namespace where the Keycloak Operator is installed!
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: {{ .Values.keycloak.name }}
+  namespace: {{ .Values.keycloak.namespace }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  instances: {{ .Values.keycloak.replicas }}
+  image: {{ include "graphwise-platform.keycloak.image" . }}
+  {{- with .Values.global.imagePullSecrets }}
+  imagePullSecrets:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  startOptimized: false
+  db:
+    vendor: postgres
+    host: {{ .Values.keycloak_postgres.name }}-rw
+    database: {{ .Values.keycloak_postgres.database.name }}
+    usernameSecret:
+      name: {{ .Values.keycloak_postgres.name }}-app
+      key: username
+    passwordSecret:
+      name: {{ .Values.keycloak_postgres.name }}-app
+      key: password
+  # We don't use the operator's ingress as it is too broad on the hostname and clashes with the graph modeling ingress
+  # We create a separate Ingress resource when enabled with .Values.keycloak.ingress.enabled
+  ingress:
+    enabled: false
+  http:
+    httpEnabled: true
+  hostname:
+    hostname: {{ include "graphwise-platform.keycloak.url" . }}
+    strict: true
+    backchannelDynamic: true
+  proxy:
+    headers: xforwarded
+  additionalOptions:
+    - name: http-relative-path
+      value: {{ $keycloak_url.path }}
+  {{- with .Values.keycloak.resources }}
+  resources: {{ toYaml . | nindent 4 }}
+  {{- end }}
+  # Not everything is supported via the CRD as a top level config
+  unsupported:
+    podTemplate:
+      spec:
+        {{- with .Values.keycloak.nodeSelector }}
+        nodeSelector: {{- tpl (toYaml .) $ | nindent 10 }}
+        {{- end }}
+        {{- if gt (int .Values.keycloak.replicas) 1 }}
+        topologySpreadConstraints:
+          - topologyKey: topology.kubernetes.io/zone
+            maxSkew: 1
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: {{ .Values.keycloak.name }}
+          - topologyKey: kubernetes.io/hostname
+            maxSkew: 1
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: {{ .Values.keycloak.name }}
+        {{- end }}
+        containers:
+          - name: keycloak
+            args:
+              - "start"
+              - "--import-realm"
+            env:
+              - name: KC_HEALTH_ENABLED
+                value: "true"
+              - name: KEYCLOAK_ADMIN
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.adminSecret.name }}
+                    key: {{ .Values.keycloak.configuration.adminSecret.adminUsernameKey }}
+              - name: KEYCLOAK_ADMIN_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.adminSecret.name }}
+                    key: {{ .Values.keycloak.configuration.adminSecret.adminPasswordKey }}
+              - name: POOLPARTY_SUPER_ADMIN_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.adminPasswordKey }}
+              - name: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.clientSecretKey }}
+              {{- with .Values.keycloak.env }}
+                {{- tpl (toYaml .) $ | nindent 14 }}
+              {{- end }}
+{{- end -}}

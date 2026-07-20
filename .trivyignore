@@ -1,0 +1,8 @@
+# Rule: ConfigMap with sensitive content
+# Reason: Some subcharts include example values in ConfigMaps
+KSV-01010
+KSV-0109
+
+# Rule: Restrict container images to trusted registries
+# Reason: We use a private registry
+KSV0125

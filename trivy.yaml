@@ -1,0 +1,25 @@
+---
+timeout: 5m
+exit-code: 1
+format: sarif
+output: trivy.sarif
+scan:
+  skip-dirs:
+    - charts/*/examples/**
+    - scripts/**
+    # We just re-package the operator as a templated Helm chart, ignore all issues
+    - charts/keycloak-operator/**
+  scanners:
+    - vuln
+    - secret
+    - misconfig
+    - license
+
+misconfiguration:
+  helm:
+    kube-version: "v1.34.0"
+
+severity:
+  - MEDIUM
+  - HIGH
+  - CRITICAL

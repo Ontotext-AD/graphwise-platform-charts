@@ -1,0 +1,38 @@
+keycloak:
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: HTTP
+      nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+
+# GraphDB needs the request to be stripped of the /graphdb prefix
+graphdb:
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+      nginx.ingress.kubernetes.io/x-forwarded-prefix: /graphdb
+    pathType: ImplementationSpecific
+    path: /graphdb(/|$)(.*)
+
+graph-modeling:
+  ingress:
+    enabled: true
+    className: nginx
+
+adf:
+  ingress:
+    enabled: true
+    className: nginx
+
+graphviews:
+  ingress:
+    enabled: true
+    className: nginx
+
+semantic-workbench:
+  ingress:
+    enabled: true
+    className: nginx

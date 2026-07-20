@@ -1,0 +1,48 @@
+name: CI - Pull Request
+run-name: CI - Pull Request pipeline triggered by ${{ github.actor }}
+
+on:
+  # A pull request is opened, reopened, or when the head branch of the pull request is updated.
+  pull_request:
+    # Ignore when updating only documentation files.
+    paths-ignore:
+      - '**.md'
+      - '**.gotmpl'
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - id: setup_helm
+        name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+
+      - id: setup_python
+        name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.x'
+          check-latest: true
+
+      - id: setup_chart_testing
+        name: Set up chart testing
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+
+      - id: run_chart_testing
+        name: Run chart-testing (lint)
+        run: ct lint --all --chart-dirs charts/ --config ct.yaml
+
+      - id: run_trivy_config
+        name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'repo'
+          scan-ref: '.'
+          trivy-config: trivy.yaml
+          hide-progress: false

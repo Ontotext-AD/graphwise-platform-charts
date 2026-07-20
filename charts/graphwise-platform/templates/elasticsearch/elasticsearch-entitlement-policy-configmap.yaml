@@ -1,0 +1,26 @@
+{{- if and .Values.elasticsearch.enabled .Values.elasticsearch.entitlementPolicy.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "graphwise-platform.elasticsearch.entitlement-policy.configmap.name" . }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+data:
+  entitlement-policy.yaml: |-
+    ALL-UNNAMED:
+      - manage_threads
+      - outbound_network
+      - files:
+          - relative_path: "repository-s3/aws-web-identity-token-file"
+            relative_to: "config"
+            mode: "read"
+          - path: "/var/run/secrets/pods.eks.amazonaws.com/serviceaccount"
+            mode: "read"
+      - write_system_properties:
+          properties:
+            - es.allow_insecure_settings
+{{- end }}

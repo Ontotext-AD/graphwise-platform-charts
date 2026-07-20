@@ -1,0 +1,88 @@
+###############################################################################
+# Main configuration file                                                     #
+# To override single property use --set                                       #
+# To override multiple, provide another values-override.yaml with the -f flag #
+# See https://helm.sh/docs/chart_template_guide/values_files/                 #
+###############################################################################
+
+###############################
+#   Metadata Configurations   #
+###############################
+
+# Overrides the name of the resources created directly by this Helm chart.
+nameOverride: ""
+
+# Overrides the full name of the resources created directly by this Helm chart.
+fullnameOverride: elasticsearch-snapshots
+
+##############################################
+#   Elasticsearch Snapshots Configurations   #
+##############################################
+
+# URL of the Elasticsearch node that will be used to trigger the snapshot process.
+url: http://elasticsearch-es-http:9200
+
+# Credentials that will be used for authentication of the API calls.
+security:
+  secret: elasticsearch-es-elastic-user
+  passwordKey: elastic
+
+# Configurations for Elasticsearch S3 snapshots and snapshots lifecycle (backups).
+#
+# Ref: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s#k8s-iam-service-accounts
+snapshots:
+  enabled: true
+
+  # Configures the snapshot schedule.
+  #
+  # Example:
+  #   schedule: 0 0 0 * * ?
+  schedule: 0 30 1 * * ?
+
+  # The name of the repository to be set in the SLM policy.
+  repository: elastic-snapshots
+
+  # Configurations for the bacsnapshots rotation policy.
+  # Elastic should own the lifecycle for its snapshots.
+  expireAfter: 30d
+  minCount: 7
+  maxCount: 30
+
+  # The type of the store. Supported values "s3" or "azure"
+  type: s3
+  # The address of the store.
+  store: ""
+  # Used as subdirectory(ies) in the store.
+  prefix: elasticsearch
+
+  # The snapshots are configured via a Helm hook (glorified Kubernetes Job).
+  hook:
+    # Run only during the initial deployment, by default.
+    # You can also use post-upgrade, if needed.
+    when: post-install
+    delete_policy: before-hook-creation,hook-succeeded
+    backoffLimit: 3
+    restartPolicy: OnFailure
+    image: alpine/curl:8.17.0
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        memory: 64Mi
+    nodeSelector: {}
+
+# Defines privilege and access control settings for job.
+# See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+#################
+# Extra Objects #
+#################
+
+extraObjects: {}

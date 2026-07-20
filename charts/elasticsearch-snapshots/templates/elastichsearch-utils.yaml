@@ -1,0 +1,15 @@
+{{- if .Values.snapshots.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "elasticsearch-snapshots.configmap.utils" . }}
+  labels:
+    {{- include "elasticsearch-snapshots.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook": {{ .Values.snapshots.hook.when }}
+    "helm.sh/hook-delete-policy":  {{ .Values.snapshots.hook.delete_policy }}
+data:
+  elasticsearch-utils.sh: |-
+    {{- tpl (.Files.Get "files/elasticsearch-utils.sh" | trim) . | nindent 4 }}
+{{- end }}

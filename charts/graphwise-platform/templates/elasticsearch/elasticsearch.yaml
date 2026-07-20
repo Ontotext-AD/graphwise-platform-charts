@@ -1,0 +1,94 @@
+#
+# Elasticsearch cluster for platform components.
+#
+{{- if .Values.elasticsearch.enabled }}
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Values.elasticsearch.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  image: {{ include "graphwise-platform.elastic.image" . }}
+  version: {{ .Values.elasticsearch.image.tag }}
+  http:
+    service:
+      spec:
+        type: {{ .Values.elasticsearch.service.type }}
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  volumeClaimDeletePolicy: {{ .Values.elasticsearch.volumeClaimDeletePolicy }}
+  nodeSets:
+    - name: platform
+      count: {{ .Values.elasticsearch.replicas }}
+      {{- with .Values.elasticsearch.configuration }}
+      config:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            {{- toYaml .Values.elasticsearch.volumeClaimTemplate.spec | nindent 12 }}
+      podTemplate:
+        spec:
+          serviceAccountName: {{ coalesce .Values.elasticsearch.serviceAccount.name .Values.elasticsearch.name }}
+          {{- with .Values.elasticsearch.nodeSelector }}
+          nodeSelector: {{- tpl (toYaml .) $ | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.elasticsearch.entitlementPolicy.enabled .Values.elasticsearch.volumes }}
+          volumes:
+            {{- if .Values.elasticsearch.entitlementPolicy.enabled }}
+            - name: entitlement-policy
+              configMap:
+                name: {{ include "graphwise-platform.elasticsearch.entitlement-policy.configmap.name" . }}
+            {{- end }}
+            {{- with .Values.elasticsearch.volumes }}
+              {{- tpl (toYaml .) $ | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- if gt (int .Values.elasticsearch.replicas) 1 }}
+          topologySpreadConstraints:
+            - topologyKey: topology.kubernetes.io/zone
+              maxSkew: 1
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: {{ .Values.elasticsearch.name }}
+            - topologyKey: kubernetes.io/hostname
+              maxSkew: 1
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: {{ .Values.elasticsearch.name }}
+          {{- end }}
+          {{- with .Values.global.imagePullSecrets }}
+          imagePullSecrets:
+            {{- tpl (toYaml .) $ | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: elasticsearch
+              {{- with .Values.elasticsearch.resources }}
+              resources: {{ toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.elasticsearch.env }}
+              env: {{ tpl (toYaml .) $ | nindent 16 }}
+              {{- end }}
+              {{- if or .Values.elasticsearch.entitlementPolicy.enabled .Values.elasticsearch.volumes }}
+              volumeMounts:
+                {{- if .Values.elasticsearch.entitlementPolicy.enabled }}
+                - name: entitlement-policy
+                  mountPath: /usr/share/elasticsearch/modules/repository-s3/entitlement-policy.yaml
+                  subPath: entitlement-policy.yaml
+                  readOnly: true
+                {{- end }}
+                {{- with .Values.elasticsearch.volumeMounts }}
+                  {{- tpl (toYaml .) $ | nindent 16 }}
+                {{- end }}
+              {{- end }}
+{{- end -}}
