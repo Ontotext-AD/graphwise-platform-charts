@@ -26,6 +26,16 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
+      - id: setup_helm
+        name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+
+      - id: configure_helm_repositories
+        name: Configure Helm repositories
+        run: |
+          helm repo add ontotext https://maven.ontotext.com/repository/helm-public/
+          helm repo add poolparty https://poolparty-semantic-suite.github.io/charts
+
       - id: run_chart_releaser
         name: Run chart-releaser
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
