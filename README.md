@@ -26,9 +26,14 @@ positive ROI.
 
 ## Charts
 
-* [elasticsearch-backups](charts/elasticsearch-snapshots) - Helper chart for managing Elasticsearch snapshot
-  configurations
+Graphwise Platform charts:
+
 * [graphwise-platform](charts/graphwise-platform) - The main umbrella Helm chart for deploying the Graphwise Platform
+
+Helper charts used by the Graphwise Platform:
+
+* [elasticsearch-snapshots](charts/elasticsearch-snapshots) - Helper chart for managing Elasticsearch snapshot
+  configurations
 * [keycloak-operator](charts/keycloak-operator) - Helm chart for installing the Keycloak Operator
 
 ## License
