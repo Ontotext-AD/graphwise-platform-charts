@@ -58,13 +58,13 @@ spec:
       whenUnsatisfiable: ScheduleAnyway
       labelSelector:
         matchLabels:
-          cnpg.io/cluster: keycloak-postgres
+          cnpg.io/cluster: {{ .Values.keycloak_postgres.name }}
     - topologyKey: kubernetes.io/hostname
       maxSkew: 1
       whenUnsatisfiable: ScheduleAnyway
       labelSelector:
         matchLabels:
-          cnpg.io/cluster: keycloak-postgres
+          cnpg.io/cluster: {{ .Values.keycloak_postgres.name }}
   {{- end }}
   {{- with .Values.elasticsearch.topologySpreadConstraints }}
   topologySpreadConstraints:
