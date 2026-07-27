@@ -51,7 +51,7 @@ spec:
   affinity:
     nodeSelector: {{ tpl (toYaml .) $ | nindent 6 }}
   {{- end }}
-  {{- if gt (int .Values.keycloak_postgres.replicas) 1 }}
+  {{- if and (gt (int .Values.keycloak_postgres.replicas) 1) (not .Values.keycloak_postgres.topologySpreadConstraints) }}
   topologySpreadConstraints:
     - topologyKey: topology.kubernetes.io/zone
       maxSkew: 1
@@ -65,5 +65,9 @@ spec:
       labelSelector:
         matchLabels:
           cnpg.io/cluster: keycloak-postgres
+  {{- end }}
+  {{- with .Values.elasticsearch.topologySpreadConstraints }}
+  topologySpreadConstraints:
+    {{- tpl (toYaml .) $ | nindent 4 }}
   {{- end }}
 {{- end }}

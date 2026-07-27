@@ -58,7 +58,7 @@ spec:
         {{- with .Values.keycloak.nodeSelector }}
         nodeSelector: {{- tpl (toYaml .) $ | nindent 10 }}
         {{- end }}
-        {{- if gt (int .Values.keycloak.replicas) 1 }}
+        {{- if and (gt (int .Values.keycloak.replicas) 1) (not .Values.keycloak.topologySpreadConstraints) }}
         topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
@@ -72,6 +72,10 @@ spec:
             labelSelector:
               matchLabels:
                 app.kubernetes.io/instance: {{ .Values.keycloak.name }}
+        {{- end }}
+        {{- with .Values.keycloak.topologySpreadConstraints }}
+        topologySpreadConstraints:
+          {{- tpl (toYaml .) $ | nindent 10 }}
         {{- end }}
         containers:
           - name: keycloak
