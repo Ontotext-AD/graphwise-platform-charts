@@ -151,6 +151,15 @@ elasticsearch:
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
   nodeSelector: {}
 
+  # Configurations for spreading Pods across different failure domains.
+  # By default, the chart will assign default topology spread constraints if elasticsearch.replicas > 1, but you can
+  # override them with this regardless of the replicas value.
+  #
+  # Values are processed as Helm templates.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+  topologySpreadConstraints: []
+
   # Configurations for the ServiceAccount for the Elasticsearch cluster.
   # Ref: https://kubernetes.io/docs/concepts/security/service-accounts/
   serviceAccount:
@@ -323,6 +332,15 @@ keycloak:
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
   nodeSelector: {}
 
+  # Configurations for spreading Pods across different failure domains.
+  # By default, the chart will assign default topology spread constraints if keycloak.replicas > 1, but you can
+  # override them with this regardless of the replicas value.
+  #
+  # Values are processed as Helm templates.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+  topologySpreadConstraints: []
+
   # Resource configurations for the Keycloak pods.
   # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
   resources:
@@ -424,6 +442,15 @@ keycloak_postgres:
   # Values are processed as Helm templates with the tpl function.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
   nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  # By default, the chart will assign default topology spread constraints if keycloak_postgres.replicas > 1, but you can
+  # override them with this regardless of the replicas value.
+  #
+  # Values are processed as Helm templates.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+  topologySpreadConstraints: []
 
 ########################################################################################################################
 # GRAPHWISE PLATFORM SERVICES

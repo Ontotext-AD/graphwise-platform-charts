@@ -2,6 +2,13 @@
 
 Changelog for the Graphwise Platform Helm chart.
 
+## 0.2.0
+
+### New
+
+- Added `topologySpreadConstraints` for `elasticsearch`, `keycloak` and `keycloak_postgres` that overrides the default
+  topology spread constraints.
+
 ## 0.1.1
 
 - Bumped the version of Elasticsearch to **9.3.8**.

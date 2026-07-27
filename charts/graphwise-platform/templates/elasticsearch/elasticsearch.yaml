@@ -52,7 +52,7 @@ spec:
               {{- tpl (toYaml .) $ | nindent 12 }}
             {{- end }}
           {{- end }}
-          {{- if gt (int .Values.elasticsearch.replicas) 1 }}
+          {{- if and (gt (int .Values.elasticsearch.replicas) 1) (not .Values.elasticsearch.topologySpreadConstraints) }}
           topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
               maxSkew: 1
@@ -66,6 +66,10 @@ spec:
               labelSelector:
                 matchLabels:
                   elasticsearch.k8s.elastic.co/cluster-name: {{ .Values.elasticsearch.name }}
+          {{- end }}
+          {{- with .Values.elasticsearch.topologySpreadConstraints }}
+          topologySpreadConstraints:
+            {{- tpl (toYaml .) $ | nindent 12 }}
           {{- end }}
           {{- with .Values.global.imagePullSecrets }}
           imagePullSecrets:
