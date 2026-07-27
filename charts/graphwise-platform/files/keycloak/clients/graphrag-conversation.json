@@ -1,0 +1,17 @@
+{
+  "clientId": "{{ .Values.graphrag.chatbot.configuration['spring.security.oauth2.client.registration.keycloak.client-id'] }}",
+  "name": "GraphRAG Conversation Service",
+  "description": "Confidential client for the GraphRAG conversation service",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "bearerOnly": false,
+  "secret": "${secret}",
+  "standardFlowEnabled": false,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [],
+  "webOrigins": [],
+  "attributes": {}
+}

@@ -1,0 +1,21 @@
+{
+  "clientId": "{{ .Values.graphrag.chatbot.configuration.GRAPHRAG_KEYCLOAK_CLIENT_ID }}",
+  "name": "GraphRAG Chatbot Application",
+  "description": "OpenID client for the public GraphRAG chatbot web application",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": true,
+  "bearerOnly": false,
+  "consentRequired": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "{{ include \"graphwise-platform.graphrag.chatbot.url\" . }}"
+  ],
+  "webOrigins": [
+    "{{ include \"graphwise-platform.graphrag.chatbot.url\" . }}"
+  ],
+  "attributes": {}
+}

@@ -46,6 +46,33 @@ kubectl -n graphwise-platform create secret generic graphdb-license --from-file=
 kubectl -n graphwise-platform create secret generic graph-modeling-license --from-file=poolparty.key=poolparty.key || true
 ```
 
+If you are deploying the Graph Automation or GraphRAG services, you will also need a Sercret with the license for the
+Graphwise Workflows (powered by n8n):
+
+```shell
+kubectl -n graphwise-platform create secret generic graphwise-workflows-license --from-file=N8N_LICENSE_ACTIVATION_KEY=n8n.key || true
+```
+
+### Image Pull Secrets
+
+If you use the GraphRAG services, you need to create a Secret for the container registry that Graphwise use to host the
+images:
+
+```shell
+kubectl -n graphwise-platform create secret docker-registry graphwise-private \
+        --docker-server=maven.ontotext.com \
+        --docker-username=<username> \
+        --docker-password=<password>
+```
+
+You can then use it with the global `imagePullSecrets` field in [values.yaml](values.yaml):
+
+```yaml
+global:
+  imagePullSecrets:
+    - name: graphwise-private
+```
+
 ### Secrets
 
 You can use or refer to the helper script [secrets.sh](../../scripts/secrets.sh). It will generate and provision all

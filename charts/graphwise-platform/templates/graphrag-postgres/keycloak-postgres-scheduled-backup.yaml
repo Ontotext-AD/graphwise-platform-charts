@@ -1,9 +1,8 @@
-{{- if and .Values.keycloak.enabled .Values.keycloak_postgres.enabled .Values.keycloak_postgres.backups.enabled -}}
+{{- if and .Values.graphrag.enabled .Values.graphrag.workflows_postgres.enabled .Values.graphrag.workflows_postgres.backups.enabled -}}
 apiVersion: barmancloud.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
-  name: {{ .Values.keycloak_postgres.name }}
-  namespace: {{ .Values.keycloak.namespace }}
+  name: {{ .Values.graphrag.workflows_postgres.name }}
   labels:
     {{- include "graphwise-platform.labels" . | nindent 4 }}
   {{- with .Values.annotations }}
@@ -12,8 +11,8 @@ metadata:
   {{- end }}
 spec:
   cluster:
-    name: {{ .Values.keycloak_postgres.name }}
-  schedule: {{ .Values.keycloak_postgres.backups.schedule }}
+    name: {{ .Values.graphrag.workflows_postgres.name }}
+  schedule: {{ .Values.graphrag.workflows_postgres.backups.schedule }}
   suspend: false
   backupOwnerReference: self
   method: plugin

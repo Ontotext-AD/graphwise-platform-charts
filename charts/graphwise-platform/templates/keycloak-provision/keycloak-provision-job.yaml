@@ -1,0 +1,144 @@
+{{- if and .Values.keycloak.enabled .Values.keycloak_provision.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.keycloak_provision.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.annotations }}
+      {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+    {{- with .Values.keycloak_provision.hook.annotations }}
+      {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.keycloak_provision.hook.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.keycloak_provision.hook.ttlSecondsAfterFinished }}
+  {{- if .Values.keycloak_provision.hook.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ .Values.keycloak_provision.hook.activeDeadlineSeconds }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "graphwise-platform.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.keycloak_provision.hook.nodeSelector }}
+      nodeSelector: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak_provision.hook.affinity }}
+      affinity: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak_provision.hook.tolerations }}
+      tolerations: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak_provision.hook.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak_provision.hook.podSecurityContext }}
+      securityContext: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "graphwise-platform.keycloak-provision.scripts.configmap.name" . }}
+            defaultMode: 0555
+            items:
+              - key: keycloak-utils.sh
+                path: keycloak-utils.sh
+        - name: tmp
+          emptyDir:
+            {{- .Values.keycloak_provision.hook.persistence.tempVolume.emptyDir | toYaml | nindent 12 }}
+      containers:
+        - name: provision
+          image: {{ coalesce .Values.keycloak_provision.hook.image.image (include "graphwise-platform.keycloak.image" .) }}
+          imagePullPolicy: {{ .Values.keycloak_provision.hook.image.pullPolicy }}
+          env:
+            - name: KEYCLOAK_URL
+              value: http://keycloak-service.keycloak:8080/auth/
+            - name: KEYCLOAK_AUTH_REALM
+              value: master
+            - name: KEYCLOAK_REALM
+              value: poolparty
+            - name: KEYCLOAK_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak_provision.keycloakCredentials.secretName }}
+                  key: {{ .Values.keycloak_provision.keycloakCredentials.usernameKey }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak_provision.keycloakCredentials.secretName }}
+                  key: {{ .Values.keycloak_provision.keycloakCredentials.passwordKey }}
+            - name: REALM_WAIT_ATTEMPTS
+              value: {{ .Values.keycloak_provision.configuration.waiting.attempts | quote }}
+            - name: REALM_WAIT_INTERVAL_SECONDS
+              value: {{ .Values.keycloak_provision.configuration.waiting.interval | quote }}
+            - name: KCADM_CONFIG
+              value: /tmp/kcadm.config
+            {{- /* GRAPHRAG CHATBOT PROVISIONING */}}
+            {{- if and .Values.graphrag.enabled .Values.graphrag.chatbot.enabled }}
+            - name: GRAPHRAG_CHATBOT_KEYCLOAK_CLIENT_ID
+              value: {{ .Values.keycloak_provision.clients.graphrag.chatbot.id }}
+            - name: GRAPHRAG_CHATBOT_URL
+              value: {{ tpl .Values.keycloak_provision.clients.graphrag.chatbot.url . }}
+            {{- end }}
+            {{- /* GRAPHRAG CONVERSATION PROVISIONING */}}
+            {{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
+            - name: GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_ID
+              value: {{ .Values.keycloak_provision.clients.graphrag.conversation.id }}
+            - name: GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak_provision.clients.graphrag.conversation.keycloakSecretsSecret.name }}
+                  key: {{ .Values.keycloak_provision.clients.graphrag.conversation.keycloakSecretsSecret.clientSecretKey }}
+            {{- end }}
+          {{- with .Values.keycloak_provision.hook.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.keycloak_provision.hook.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              set -eu
+              /scripts/keycloak-utils.sh wait-for-realm
+              {{- if and .Values.graphrag.enabled .Values.graphrag.chatbot.enabled }}
+              /scripts/keycloak-utils.sh create-client $GRAPHRAG_CHATBOT_KEYCLOAK_CLIENT_ID \
+                  -s name="GraphRAG Chatbot Application" \
+                  -s protocol=openid-connect \
+                  -s enabled=true \
+                  -s publicClient=true \
+                  -s standardFlowEnabled=true \
+                  -s baseUrl="$GRAPHRAG_CHATBOT_URL" \
+                  -s "redirectUris=[\"$GRAPHRAG_CHATBOT_URL\"]" \
+                  -s "webOrigins=[\"$GRAPHRAG_CHATBOT_URL\"]"
+              {{- end }}
+              {{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
+              /scripts/keycloak-utils.sh create-client $GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_ID \
+                  -s name="GraphRAG Conversation API" \
+                  -s protocol=openid-connect \
+                  -s enabled=true \
+                  -s publicClient=false \
+                  -s standardFlowEnabled=false \
+                  -s clientAuthenticatorType=client-secret \
+                  -s serviceAccountsEnabled=true \
+                  -s secret="$GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET"
+              {{- end }}
+{{- end }}

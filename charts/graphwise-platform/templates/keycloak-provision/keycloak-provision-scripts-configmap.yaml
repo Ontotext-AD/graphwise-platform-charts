@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "graphwise-platform.keycloak-provision.scripts.configmap.name" . }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  # TODO: rethink this
+  annotations:
+    {{- with .Values.annotations }}
+      {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+    {{- with .Values.keycloak_provision.configmap.annotations }}
+      {{- tpl (toYaml .) $ | nindent 4 }}
+    {{- end }}
+data:
+  keycloak-utils.sh: |-
+    {{- tpl (.Files.Get "files/keycloak/keycloak-utils.sh" | trim) . | nindent 4 }}

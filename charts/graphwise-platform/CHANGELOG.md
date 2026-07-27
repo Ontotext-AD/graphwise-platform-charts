@@ -6,6 +6,8 @@ Changelog for the Graphwise Platform Helm chart.
 
 ### New
 
+- Included Graphwise's [GraphRAG Helm chart](https://github.com/poolparty-semantic-suite/graphrag-charts) as part of the
+  deployment
 - Added `topologySpreadConstraints` for `elasticsearch`, `keycloak` and `keycloak_postgres` that overrides the default
   topology spread constraints.
 

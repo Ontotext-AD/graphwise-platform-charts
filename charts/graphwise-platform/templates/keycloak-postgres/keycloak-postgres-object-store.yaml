@@ -1,4 +1,4 @@
-{{- if and .Values.keycloak_postgres.enabled .Values.keycloak_postgres.backups.enabled -}}
+{{- if and .Values.keycloak.enabled .Values.keycloak_postgres.enabled .Values.keycloak_postgres.backups.enabled -}}
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:

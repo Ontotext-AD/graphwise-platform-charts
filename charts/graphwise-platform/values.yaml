@@ -21,19 +21,21 @@ global:
     # This must be a valid URL, including the protocol (http/https). It can also accept a context path if needed.
     #
     # The value is processed as a Helm template with the tpl function.
-    url: http://platform.127.0.0.1.nip.io
+    url: https://platform.127.0.0.1.nip.io
 
   # Overrides image.registry for all components directly deployed by this chart as well as any sub-charts that reads
   # this global parameter.
   imageRegistry: ""
 
   # Inserts image pull secret references.
+  # Use it when you need to pull images from the Graphwise private registry.
+  #
   # Ref: https://kubernetes.io/docs/concepts/configuration/secret/#using-imagepullsecrets
   #
   # Example:
   # imagePullSecrets:
   #   - name: my-pull-secret
-  imagePullSecrets: []
+  imagePullSecrets: [ ]
 
 ########################################################################################################################
 # COMMON PARAMETERS
@@ -46,18 +48,18 @@ nameOverride: ""
 # To override the labels of the sub-charts, use their dedicated parameters.
 # Values are processed as Helm templates with the tpl function.
 # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-labels: {}
+labels: { }
 
 # Additional common annotations to add to resources created directly by this chart.
 # To override the annotations of the sub-charts, use their dedicated parameters.
 # Values are processed as Helm templates with the tpl function.
 # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-annotations: {}
+annotations: { }
 
 # Additional objects to insert along with the release.
 # Values are processed as Helm templates with tpl function.
 # Ref: https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function
-extraObjects: []
+extraObjects: [ ]
 
 ########################################################################################################################
 # SECRETS GENERATION
@@ -83,9 +85,16 @@ secrets:
   graphModeling:
     adminCredentialsSecretName: graph-modeling-admin-credentials
     secretPropertiesSecretName: graph-modeling-secret-properties
+  # Defines how to name and refer to GraphRAG Kubernetes Secret objects during secret generation.
+  graphrag:
+    conversation:
+      databaseCredentialsSecretName: graphrag-conversation-database-credentials
+      keycloakSecretsSecretName: graphrag-conversation-keycloak-secrets
+    workflows:
+      encryptionSecretName: graphrag-workflows-encryption
 
 ########################################################################################################################
-# GRAPHWISE PLATFORM DEPENDENCIES
+# GRAPHWISE PLATFORM - DEPENDENCIES
 ########################################################################################################################
 
 # Elasticsearch configurations.
@@ -149,7 +158,7 @@ elasticsearch:
   # Selector labels to match when selecting nodes.
   # Values are processed as Helm templates with the tpl function.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
   # By default, the chart will assign default topology spread constraints if elasticsearch.replicas > 1, but you can
@@ -158,7 +167,7 @@ elasticsearch:
   # Values are processed as Helm templates.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Configurations for the ServiceAccount for the Elasticsearch cluster.
   # Ref: https://kubernetes.io/docs/concepts/security/service-accounts/
@@ -174,11 +183,11 @@ elasticsearch:
     name: ""
     # Additional annotations to add to the ServiceAccount resource when elasticsearch.serviceAccount.create is true.
     # Values are processed as Helm templates with the tpl function.
-    annotations: {}
+    annotations: { }
 
   # Additional environment variables to provide to the Elasticsearch cluster.
   # Values are processed as Helm templates with the tpl function.
-  env: []
+  env: [ ]
 
   # Resource configurations for the Elasticsearch cluster pods.
   # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
@@ -190,11 +199,11 @@ elasticsearch:
 
   # Additional volumes to set for the Elasticsearch cluster pods.
   # Values are processed as Helm templates.
-  volumes: []
+  volumes: [ ]
 
   # Additional volumes to set for the Elasticsearch cluster pods.
   # Values are processed as Helm templates.
-  volumeMounts: []
+  volumeMounts: [ ]
 
   # Toggles the generation of an Elasticsearch entitlement-policy.yaml
   # Use it when you deploy in a cloud-managed Kubernetes cluster and need to resolve ODIC tokens from Kubernetes.
@@ -280,7 +289,7 @@ keycloak:
     hostname: '{{ include "graphwise-platform.url" . }}/auth'
     # Reference to a Secret object containing the credentials for the Keycloak admin user.
     # This is used only during the initial Keycloak bootstrap which initializes the instance.
-    # Consecutive Keycloak restarts will not use the credentials from the Secret.
+    # Consecutive Keycloak restarts will not use the credentials from the Secret, but other components might.
     adminSecret:
       name: keycloak-admin-credentials
       adminUsernameKey: KEYCLOAK_ADMIN
@@ -296,7 +305,7 @@ keycloak:
 
   # Additional environment variables to provide to the Keycloak pods.
   # Values are processed as Helm templates with the tpl function.
-  env: []
+  env: [ ]
 
   # Ingress resource configurations for Keycloak.
   #
@@ -310,7 +319,7 @@ keycloak:
     className: ""
     # Additional annotations to add to the Ingress resource.
     # Values are processed as Helm templates with the tpl function.
-    annotations: {}
+    annotations: { }
     # Ingress path override.
     # If set, it overrides the path from keycloak.configuration.hostname
     path: ""
@@ -330,7 +339,7 @@ keycloak:
   # Selector labels to match when selecting nodes.
   # Values are processed as Helm templates with the tpl function.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
   # By default, the chart will assign default topology spread constraints if keycloak.replicas > 1, but you can
@@ -339,7 +348,7 @@ keycloak:
   # Values are processed as Helm templates.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the Keycloak pods.
   # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
@@ -407,17 +416,17 @@ keycloak_postgres:
     # backups to S3.
     # Values are processed as Helm templates with the tpl function.
     # REf: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#aws-s3
-    s3Credentials: {}
+    s3Credentials: { }
     # Credentials configuration when the chart is deployed in Azure and is configured to upload
     # backups to Azure Blob Storage.
     # Values are processed as Helm templates with the tpl function.
     # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#azure-blob-storage
-    azureCredentials: {}
+    azureCredentials: { }
     # Credentials configuration when the chart is deployed in Google Cloud and is configured to upload
     # backups to Google Cloud Storage.
     # Values are processed as Helm templates with the tpl function.
     # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#google-cloud-storage
-    googleCredentials: {}
+    googleCredentials: { }
 
   # Storage configurations for the PostgreSQL database cluster.
   storage:
@@ -436,12 +445,12 @@ keycloak_postgres:
 
   # Configurations for a ServiceAccount for the PostgreSQL database cluster.
   # Value is processed as a Helm template with the tpl function.
-  serviceAccountTemplate: {}
+  serviceAccountTemplate: { }
 
   # Selector labels to match when selecting nodes.
   # Values are processed as Helm templates with the tpl function.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
   # By default, the chart will assign default topology spread constraints if keycloak_postgres.replicas > 1, but you can
@@ -450,10 +459,150 @@ keycloak_postgres:
   # Values are processed as Helm templates.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
+
+# Keycloak provisioning configurations.
+#
+# This chart deploys a Kubernetes Job as a chart hook that can provision necessary OpenID clients for the Graphwise Platform:
+# - GraphRAG Chatbot web app  public client
+# - GraphRAG Conversation API confidential client
+#
+# You can create these clients manually in the Keycloak admin console, but this chart can automate the process.
+# Refer to the Job resource on what are the client configurations.
+keycloak_provision:
+  # Toggles the deployment of the Keycloak provisioning Job.
+  enabled: true
+
+  # Name and name prefix for the Keycloak provisioning resources.
+  name: keycloak-provision
+
+  # Configurations for the Keycloak provisioning.
+  configuration:
+    # The provisioning Job waits for the Keycloak instance to be ready before starting the provisioning process.
+    waiting:
+      # Duration in seconds between checks for the Keycloak instance readiness.
+      interval: 3
+      # Maximum attempts for the Keycloak instance readiness check.
+      attempts: 20
+
+  # Configurations for the ConfigMap with the Keycloak provisioning script.
+  configmap:
+    # Helm chart hook annotations to add to the ConfigMap resource.
+    # Controls the lifecycle of the ConfigMap.
+    # Important: This ConfigMap must be created before the Job, otherwise the Job will fail to start.
+    # Ref: https://helm.sh/docs/topics/charts_hooks/
+    annotations:
+      helm.sh/hook: post-install, post-upgrade
+      helm.sh/hook-delete-policy: before-hook-creation, hook-succeeded
+      helm.sh/hook-weight: "0"
+
+  # Reference to a Secret object containing credentials for the Keycloak master realm that can modify and provision
+  # clients in other realms.
+  keycloakCredentials:
+    secretName: keycloak-admin-credentials
+    usernameKey: KEYCLOAK_ADMIN
+    passwordKey: KEYCLOAK_ADMIN_PASSWORD
+
+  # Keycloak client provisioning configuration.
+  clients:
+    graphrag:
+      # Public OpenID client for the GraphRAG Chatbot web application.
+      chatbot:
+        id: graphrag-chatbot
+        url: '{{ include "graphwise-platform.graphrag.chatbot.url" . }}'
+      # Confidential OpenID client for the GraphRAG Conversation API.
+      conversation:
+        id: graphrag-conversation
+        keycloakSecretsSecret:
+          name: graphrag-conversation-keycloak-secrets
+          clientSecretKey: client-secret
+
+  # Configurations for the Kubernetes Job created by Helm as a chart hook.
+  # Ref: https://helm.sh/docs/topics/charts_hooks/
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/job/
+  hook:
+    # Helm chart hook annotations to add to the Job resource.
+    # Controls the execution lifecycle of the Job.
+    annotations:
+      helm.sh/hook: post-install, post-upgrade
+      helm.sh/hook-delete-policy: before-hook-creation, hook-succeeded
+      helm.sh/hook-weight: "10"
+    # The number of retries before marking the Job as failed.
+    backoffLimit: 10
+    # Duration in seconds relative to the startTime before the Job is cleaned up.
+    ttlSecondsAfterFinished: 120
+    # Maximum duration in seconds relative to the startTime that the job may be running before terminated.
+    activeDeadlineSeconds: ""
+    # Container image configurations for the provisioning Job.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/
+    image:
+      # By default, the Job uses the image defined in the keycloak.image section.
+      # You can use this to override that image
+      image: ""
+      # The pull policy for the Job containers.
+      pullPolicy: IfNotPresent
+
+    # Selector labels to match when selecting nodes.
+    # Values are processed as Helm templates with the tpl function.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    # See https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+    nodeSelector: { }
+
+    # Node and pod affinity & anti affinity configurations for constraining the Pod scheduling.
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+    affinity: { }
+
+    # List of taint tolerations.
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    tolerations: [ ]
+
+    # Configurations for spreading Pods across different failure domains.
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+    topologySpreadConstraints: [ ]
+
+    # Resource configurations for the Job containers.
+    # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        memory: 256Mi
+        cpu: 50m
+
+    # Defines privilege and access control settings for all containers in the Job.
+    # See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Defines privilege and access control settings for the containers.
+    # See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ "ALL" ]
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Persistence configurations for the Job pod.
+    persistence:
+      # Configurations for an emptyDir volume for the /tmp folder in each container.
+      tempVolume:
+        emptyDir:
+          sizeLimit: 64Mi
 
 ########################################################################################################################
-# GRAPHWISE PLATFORM SERVICES
+# GRAPHWISE PLATFORM - CORE SERVICES
 ########################################################################################################################
 
 # GraphDB configuration overrides
@@ -548,10 +697,10 @@ graphdb:
     enabled: false
 
   # Selector labels to match when selecting nodes.
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the GraphDB containers.
   # For resizing to your needs, refer to the GraphDB documentation https://graphdb.ontotext.com/documentation/11.4/requirements.html
@@ -589,10 +738,10 @@ graphdb:
               storage: 10Gi
 
     # Selector labels to match when selecting nodes.
-    nodeSelector: {}
+    nodeSelector: { }
 
     # Configurations for spreading Pods across different failure domains.
-    topologySpreadConstraints: []
+    topologySpreadConstraints: [ ]
 
     # Resource configurations for the GraphDB proxy containers.
     # For resizing to your needs, refer to the GraphDB documentation https://graphdb.ontotext.com/documentation/11.4/requirements.html
@@ -683,7 +832,7 @@ graph-modeling:
     enabled: true
     volumeClaimTemplate:
       spec:
-        # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+        # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.3
         # storageClassName:
         accessModes:
           - ReadWriteOnce
@@ -692,10 +841,10 @@ graph-modeling:
             storage: 10Gi
 
   # Selector labels to match when selecting nodes.
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the Graph Modeling pod.
   resources:
@@ -759,10 +908,10 @@ adf:
             storage: 2Gi
 
   # Selector labels to match when selecting nodes.
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the ADF pod.
   resources:
@@ -813,10 +962,10 @@ graphviews:
           key: password
 
   # Selector labels to match when selecting nodes.
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the GraphViews pod.
   resources:
@@ -886,10 +1035,10 @@ semantic-workbench:
             storage: 2Gi
 
   # Selector labels to match when selecting nodes.
-  nodeSelector: {}
+  nodeSelector: { }
 
   # Configurations for spreading Pods across different failure domains.
-  topologySpreadConstraints: []
+  topologySpreadConstraints: [ ]
 
   # Resource configurations for the Semantic Workbench pod.
   resources:
@@ -897,3 +1046,354 @@ semantic-workbench:
       memory: 2Gi
     limits:
       memory: 2Gi
+
+########################################################################################################################
+# GRAPHWISE PLATFORM - GRAPHRAG SERVICES
+########################################################################################################################
+
+# Graphwise GraphRAG configuration overrides
+#
+# This chart deploys Graphwise GraphRAG service as part of the Graphwise Platform AI Suite.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/graphrag-charts
+graphrag:
+  enabled: false
+
+  # GraphRAG Chatbot configuration overrides.
+  #
+  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-chatbot/values.yaml
+  chatbot:
+    # Toggles the deployment of the GraphRAG Chatbot service.
+    enabled: true
+
+    # Name and name prefix for the GraphRAG Chatbot resources.
+    fullnameOverride: graphrag-chatbot
+
+    # Number of GraphRAG Chatbot instances to deploy.
+    replicas: 1
+
+    # GraphRAG Chatbot runtime configuration settings.
+    configuration:
+      # The external URL at which GraphRAG Chatbot should be accessible.
+      externalUrl: '{{ include "graphwise-platform.url" . }}/graphrag/'
+
+      # GraphRAG Chatbot configuration properties.
+      properties:
+        GRAPHRAG_BACKEND_URL: '{{ include "graphwise-platform.url" . }}/graphrag/conversations'
+        GRAPHRAG_KEYCLOAK_URL: '{{ include "graphwise-platform.url" . }}/auth/'
+        GRAPHRAG_KEYCLOAK_REALM: poolparty
+        GRAPHRAG_KEYCLOAK_CLIENT_ID: graphrag-chatbot
+
+    # Ingress configuration for the GraphRAG Chatbot service.
+    #
+    # The ingress in this chart makes no assumptions of what Ingress controller is being used. It's up to you to
+    # define any specific annotations required by the controller implementation in your cluster.
+    #
+    # See the sub chart for further details.
+    ingress:
+      enabled: false
+      className: ""
+      annotations: { }
+
+    # Resource configurations for the Graphrag Chatbot pods.
+    resources:
+      requests:
+        memory: 256Mi
+      limits:
+        memory: 256Mi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: { }
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: [ ]
+
+  # GraphRAG Conversation configuration overrides.
+  #
+  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-conversation/values.yaml
+  conversation:
+    # Toggles the deployment of the GraphRAG Conversation service.
+    enabled: true
+
+    # Name and name prefix for the GraphRAG Conversation resources.
+    fullnameOverride: graphrag-conversation
+
+    # Configuration overrides for the GraphRAG Conversation service.
+    configuration:
+      properties:
+        cors.disable: false
+        # N8N Settings
+        n8n.base.url: http://graphrag-workflows:5678
+        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}
+        # Keycloak settings
+        spring.security.oauth2.resourceserver.jwt.jwk-set-uri: http://keycloak-service.keycloak:8080/auth/realms/poolparty/protocol/openid-connect/certs
+        spring.security.oauth2.resourceserver.jwt.issuer-uri: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
+        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
+        spring.security.oauth2.client.registration.keycloak.scope: openid
+        keycloak.health.url: http://keycloak-service.keycloak:9000/auth/health
+        # Swagger settings
+        springdoc.api-docs.server-url: /conversations
+        springdoc.swagger-ui.config-url: /graphrag/conversations/v3/api-docs/swagger-config
+        springdoc.swagger-ui.url: /graphrag/conversations/v3/api-docs
+
+    # Additional environment variables to be set in the GraphRAG Conversation container.
+    # Note the references to the Kubernetes Secrets: If you have created them with different names, you need
+    # to update them here.
+    extraEnv:
+      - name: spring.datasource.username
+        valueFrom:
+          secretKeyRef:
+            name: graphrag-conversation-database-credentials
+            key: username
+      - name: spring.datasource.password
+        valueFrom:
+          secretKeyRef:
+            name: graphrag-conversation-database-credentials
+            key: password
+      - name: spring.security.oauth2.client.registration.keycloak.client-secret
+        valueFrom:
+          secretKeyRef:
+            name: graphrag-conversation-keycloak-secrets
+            key: client-secret
+
+    # Persistence configurations for Graphrag Conversation service.
+    persistence:
+      enabled: true
+      volumeClaimTemplate:
+        spec:
+          # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+          # storageClassName:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+
+    # Resource configurations for the Graphrag Conversation pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: { }
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: [ ]
+
+  # GraphRAG Components configuration overrides.
+  #
+  # You have to configure this service according to your embedding provider (Elasticsearch, OpenSearch, etc.)
+  # using graphrag.components.configuration.properties.
+  #
+  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-components/values.yaml
+  components:
+    # Toggles the deployment of the GraphRAG Components service.
+    enabled: true
+
+    # Name and name prefix for the GraphRAG Chatbot resources.
+    fullnameOverride: graphrag-components
+
+    # Number of GraphRAG Components instances to deploy.
+    replicas: 1
+
+    # GraphRAG Components runtime configuration settings.
+    configuration:
+      # GraphRAG Components configuration properties to insert as environment variables.
+      # properties: {}
+
+      # References to existing ConfigMap or Secret resources containing configuration properties that will be included
+      # as environment variables.
+      existingProperties: [ ]
+
+    # Resource configurations for the Graphrag Components pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: { }
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: [ ]
+
+  # GraphRAG Workflows configuration overrides.
+  #
+  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-workflows/values.yaml
+  workflows:
+    # Toggles the deployment of the GraphRAG Workflows service.
+    enabled: true
+
+    # Name and name prefix for the GraphRAG Workflows resources.
+    fullnameOverride: graphrag-workflows
+
+    # GraphRAG Workflows runtime configuration settings.
+    configuration:
+      # The external URL at which GraphRAG Workflows should be accessible.
+      externalUrl: '{{ include "graphwise-platform.url" . }}/graphrag/workflows'
+
+      # Encryption configurations for the GraphRAG Workflows service.
+      encryption:
+        existingSecret: graphrag-workflows-encryption
+
+      # License configurations for the GraphRAG Workflows service.
+      license:
+        existingSecret: graphwise-workflows-license
+        # Update to your actual tenant identifier
+        tenantId: 1
+
+      # Database configurations for the GraphRAG Workflows service.
+      postgresdb:
+        host: graphrag-workflows-postgres-rw
+        database: graphrag
+        credentials:
+          existingSecret: graphrag-workflows-postgres-app
+          usernameKey: username
+          passwordKey: password
+
+    # Ingress configuration for the GraphRAG Workflows service.
+    #
+    # The ingress in this chart makes no assumptions of what Ingress controller is being used. It's up to you to
+    # define any specific annotations required by the controller implementation in your cluster.
+    #
+    # Note that to deploy the GraphRAG Workflows service on a subpath, depending on the Ingress controller, you have
+    # to strip out the subpath from the upstream request.
+    #
+    # See the sub chart for further details.
+    ingress:
+      enabled: false
+      className: ""
+      annotations: { }
+
+    # Persistence configurations for Graphrag Workflows.
+    persistence:
+      enabled: true
+      volumeClaim:
+        spec:
+          # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
+          # storageClassName:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+
+    # Resource configurations for the Graphrag Workflows pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: { }
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: [ ]
+
+  # PostgreSQL for GraphRAG Workflows.
+  #
+  # This chart deploys a PostgreSQL database cluster for the GraphRAG Workflows using the CNPG Kubernetes operator.
+  #
+  # You can use your own PostgreSQL but have to provide the necessary configuration overrides to the rest of the
+  # services so they can connect to it.
+  #
+  # Ref: https://cloudnative-pg.io/docs
+  workflows_postgres:
+    # Toggles the deployment of the PostgreSQL database cluster.
+    enabled: true
+
+    # Name and name prefix for the PostgreSQL database cluster resources.
+    name: graphrag-workflows-postgres
+
+    # Number of database nodes to deploy in the PostgreSQL cluster.
+    # Set value to 1 to run a standalone PostgreSQL instance.
+    # Set to 2 or more to run a multi-node PostgreSQL cluster.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+    replicas: 1
+
+    # Image configurations for PostgreSQL.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/
+    image:
+      registry: ghcr.io
+      repository: cloudnative-pg/postgresql
+      tag: 16.14-standard-trixie
+      digest: ""
+
+    # Configurations for the GraphRAG Workflows PostgreSQL database cluster.
+    database:
+      name: graphrag
+      owner: graphrag
+
+    # Configurations for the PostgreSQL database cluster. Passed directly to the CustomResource.
+    postgresql:
+      parameters:
+        # Prevents filling up the disk with unprocessed WAL archives. Use -1 to disable.
+        # See https://cloudnative-pg.io/docs/1.28/replication/#capping-the-wal-size-retained-for-replication-slots
+        max_slot_wal_keep_size: 4GB
+
+    # Configurations for PostgreSQL backups via the CNPG barman plugin.
+    # The plugin is configured to upload backups in a compatible object store.
+    # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/
+    backups:
+      # Toggles the backup schedule.
+      enabled: false
+      # Object storage URL where the backups will be uploaded to.
+      # The plugin will also create a subfolder based on the PostgreSQL cluster name.
+      destination: ""
+      # The schedule for taking backups.
+      schedule: 0 0 0 * * *
+      # Defines the retention policy for the backups.
+      retention: 30d
+      # Credentials configuration when the chart is deployed in AWS and is configured to upload
+      # backups to S3.
+      # Values are processed as Helm templates with the tpl function.
+      # REf: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#aws-s3
+      s3Credentials: { }
+      # Credentials configuration when the chart is deployed in Azure and is configured to upload
+      # backups to Azure Blob Storage.
+      # Values are processed as Helm templates with the tpl function.
+      # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#azure-blob-storage
+      azureCredentials: { }
+      # Credentials configuration when the chart is deployed in Google Cloud and is configured to upload
+      # backups to Google Cloud Storage.
+      # Values are processed as Helm templates with the tpl function.
+      # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#google-cloud-storage
+      googleCredentials: { }
+
+    # Storage configurations for the PostgreSQL database cluster.
+    storage:
+      # Explicit storage class to use for the PostgreSQL database cluster.
+      # Leave empty to use the default storage class in your Kubernetes cluster.
+      storageClassName:
+      size: 10Gi
+
+    # Resource configurations for the PostgreSQL pods.
+    # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+    resources:
+      requests:
+        memory: 2Gi
+      limits:
+        memory: 2Gi
+
+    # Configurations for a ServiceAccount for the PostgreSQL database cluster.
+    # Value is processed as a Helm template with the tpl function.
+    serviceAccountTemplate: { }
+
+    # Selector labels to match when selecting nodes.
+    # Values are processed as Helm templates with the tpl function.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    nodeSelector: { }
+
+    # Configurations for spreading Pods across different failure domains.
+    # By default, the chart will assign default topology spread constraints if graphrag.workflows_postgres.replicas > 1,
+    # but you can override them with this regardless of the replicas value.
+    #
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+    topologySpreadConstraints: [ ]
