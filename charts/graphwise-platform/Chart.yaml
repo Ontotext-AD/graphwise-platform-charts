@@ -7,7 +7,7 @@ description: |
   Umbrella chart for deploying Graphwise Platform:
   The Enterprise AI Platform that turns fragmented data into hallucination-free business outcomes.
 type: application
-version: 0.1.0
+version: 0.1.1
 kubeVersion: ^1.34.0-0
 home: https://graphwise.ai/
 icon: https://graphwise.ai/wp-content/uploads/2024/10/cropped-graphwise_favicon-192x192.png

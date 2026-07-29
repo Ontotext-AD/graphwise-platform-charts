@@ -109,7 +109,7 @@ elasticsearch:
   image:
     registry: docker.io
     repository: ontotext/poolparty-elasticsearch
-    tag: 9.3.3
+    tag: 9.3.8
     digest: ""
 
   # Number of Elasticsearch nodes to deploy in the cluster.
