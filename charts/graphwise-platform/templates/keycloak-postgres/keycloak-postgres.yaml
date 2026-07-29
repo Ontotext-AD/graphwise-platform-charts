@@ -1,4 +1,4 @@
-{{- if .Values.keycloak_postgres.enabled }}
+{{- if and .Values.keycloak.enabled .Values.keycloak_postgres.enabled }}
 #
 # PostgreSQL cluster for Keycloak.
 # See https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/

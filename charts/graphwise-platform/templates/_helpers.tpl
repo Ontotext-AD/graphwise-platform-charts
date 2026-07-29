@@ -18,3 +18,10 @@ Renders the URL for the Graph Modeling deployment.
 {{- define "graphwise-platform.graph-modeling.url" -}}
   {{- tpl (index .Values "graph-modeling").configuration.externalUrl . -}}
 {{- end -}}
+
+{{/*
+Renders the URL for the GraphRAG Chatbot app.
+*/}}
+{{- define "graphwise-platform.graphrag.chatbot.url" -}}
+  {{- tpl .Values.graphrag.chatbot.configuration.externalUrl . -}}
+{{- end -}}
