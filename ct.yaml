@@ -1,3 +1,4 @@
 chart-repos:
   - ontotext=https://maven.ontotext.com/repository/helm-public/
   - poolparty=https://poolparty-semantic-suite.github.io/charts
+  - graphrag=https://poolparty-semantic-suite.github.io/graphrag-charts

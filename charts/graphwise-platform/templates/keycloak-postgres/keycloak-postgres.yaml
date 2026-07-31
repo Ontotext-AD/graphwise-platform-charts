@@ -1,4 +1,4 @@
-{{- if .Values.keycloak_postgres.enabled }}
+{{- if and .Values.keycloak.enabled .Values.keycloak_postgres.enabled }}
 #
 # PostgreSQL cluster for Keycloak.
 # See https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/
@@ -51,19 +51,23 @@ spec:
   affinity:
     nodeSelector: {{ tpl (toYaml .) $ | nindent 6 }}
   {{- end }}
-  {{- if gt (int .Values.keycloak_postgres.replicas) 1 }}
+  {{- if and (gt (int .Values.keycloak_postgres.replicas) 1) (not .Values.keycloak_postgres.topologySpreadConstraints) }}
   topologySpreadConstraints:
     - topologyKey: topology.kubernetes.io/zone
       maxSkew: 1
       whenUnsatisfiable: ScheduleAnyway
       labelSelector:
         matchLabels:
-          cnpg.io/cluster: keycloak-postgres
+          cnpg.io/cluster: {{ .Values.keycloak_postgres.name }}
     - topologyKey: kubernetes.io/hostname
       maxSkew: 1
       whenUnsatisfiable: ScheduleAnyway
       labelSelector:
         matchLabels:
-          cnpg.io/cluster: keycloak-postgres
+          cnpg.io/cluster: {{ .Values.keycloak_postgres.name }}
+  {{- end }}
+  {{- with .Values.elasticsearch.topologySpreadConstraints }}
+  topologySpreadConstraints:
+    {{- tpl (toYaml .) $ | nindent 4 }}
   {{- end }}
 {{- end }}

@@ -23,6 +23,10 @@ export GRAPHDB_CLUSTER_TOKEN_SECRET_NAME="graphdb-cluster-token"
 export GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME="graph-modeling-secret-properties"
 export GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME="graph-modeling-admin-credentials"
 
+export GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME="graphrag-conversation-database-credentials"
+export GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME="graphrag-conversation-keycloak-secrets"
+export GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME="graphrag-workflows-encryption"
+
 ########################################################################################################################
 # Functions
 ########################################################################################################################
@@ -63,6 +67,11 @@ check_binary() {
   fi
 }
 
+namespace_exists() {
+  local namespace="$1"
+  kubectl get namespace "$namespace" >/dev/null 2>&1
+}
+
 secret_exists() {
   local namespace="$1"
   local secret_name="$2"
@@ -70,27 +79,63 @@ secret_exists() {
 }
 
 cleanup_secrets() {
-  kubectl -n ${KEYCLOAK_NAMESPACE} delete secret ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME} || true
-  kubectl -n ${KEYCLOAK_NAMESPACE} delete secret ${KEYCLOAK_GRAPH_MODELING_SECRETS_SECRET_NAME} || true
-
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_INITIAL_USERS_SECRET_NAME} || true
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_ADMIN_CREDENTIALS_SECRET_NAME} || true
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_PROVISIONER_CREDENTIALS_SECRET_NAME} || true
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_PROVISIONER_TOKEN_SECRET_NAME} || true
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_CLUSTER_TOKEN_SECRET_NAME} || true
-
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME} || true
-  kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME} || true
+  # Keycloak
+  if secret_exists ${KEYCLOAK_NAMESPACE} ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${KEYCLOAK_NAMESPACE} delete secret ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME}
+  fi
+  if secret_exists ${KEYCLOAK_NAMESPACE} ${KEYCLOAK_GRAPH_MODELING_SECRETS_SECRET_NAME}; then
+    kubectl -n ${KEYCLOAK_NAMESPACE} delete secret ${KEYCLOAK_GRAPH_MODELING_SECRETS_SECRET_NAME}
+  fi
+  # GraphDB
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHDB_INITIAL_USERS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_INITIAL_USERS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHDB_ADMIN_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_ADMIN_CREDENTIALS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHDB_PROVISIONER_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_PROVISIONER_CREDENTIALS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHDB_PROVISIONER_TOKEN_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_PROVISIONER_TOKEN_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHDB_CLUSTER_TOKEN_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHDB_CLUSTER_TOKEN_SECRET_NAME}
+  fi
+  # Graph Modeling
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME}
+  fi
+  # GraphRAG
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}
+  fi
 }
 
 create_secrets() {
   #
   # PLATFORM NAMESPACE
   #
-  kubectl create namespace graphwise-platform || true
+  if namespace_exists ${PLATFORM_NAMESPACE}; then
+    echo "Namespace ${PLATFORM_NAMESPACE} already exists, skipping..."
+  else
+    kubectl create namespace ${PLATFORM_NAMESPACE} || true
+  fi
 
+  KEYCLOAK_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
   GRAPH_MODELING_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_KEYCLOAK_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
   GRAPH_MODELING_KEYCLOAK_LOGIN_CLIENTSECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
 
   #
@@ -101,8 +146,16 @@ create_secrets() {
   else
     kubectl --namespace ${KEYCLOAK_NAMESPACE} create secret generic ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME} \
             --from-literal=KEYCLOAK_ADMIN="admin" \
-            --from-literal=KEYCLOAK_ADMIN_PASSWORD="${GRAPH_MODELING_KEYCLOAK_ADMIN_PASSWORD}"
+            --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}"
   fi
+  # Copy to platform as well as it is needed by provisioning scripts
+  if secret_exists ${PLATFORM_NAMESPACE} ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME}; then
+      echo "Secret ${PLATFORM_NAMESPACE}/${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME} already exists, skipping..."
+    else
+      kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${KEYCLOAK_ADMIN_CREDENTIALS_SECRET_NAME} \
+              --from-literal=KEYCLOAK_ADMIN="admin" \
+              --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}"
+    fi
 
   #
   # Keycloak Graph Modeler credentials
@@ -223,7 +276,7 @@ EOF
     kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME} \
             --from-literal=_POOLPARTY_ENCRYPTION_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)" \
             --from-literal=POOLPARTY_KEYCLOAK_ADMIN_USERNAME="admin" \
-            --from-literal=POOLPARTY_KEYCLOAK_ADMIN_PASSWORD="${GRAPH_MODELING_KEYCLOAK_ADMIN_PASSWORD}" \
+            --from-literal=POOLPARTY_KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}" \
             --from-literal=POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET="${GRAPH_MODELING_KEYCLOAK_LOGIN_CLIENTSECRET}"
   fi
 
@@ -236,6 +289,43 @@ EOF
     kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME} \
             --from-literal=username="superadmin" \
             --from-literal=password="${GRAPH_MODELING_ADMIN_PASSWORD}"
+  fi
+
+  #
+  # GraphRAG Conversation database credentials
+  #
+  GRAPHRAG_CONVERSATION_DATABASE_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME} \
+            --from-literal=username="graphrag" \
+            --from-literal=password="${GRAPHRAG_CONVERSATION_DATABASE_PASSWORD}"
+  fi
+
+  #
+  # GraphRAG Conversation keycloak secrets
+  #
+  GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME} \
+            --from-literal=client-secret="${GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET}"
+  fi
+
+  #
+  # GraphRAG Workflows encryption secret
+  #
+  GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME} \
+            --from-literal=N8N_ENCRYPTION_KEY="${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET}"
   fi
 }
 

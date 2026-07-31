@@ -89,6 +89,44 @@ Semantic Workbench is enabled
 {{- else }}
 Semantic Workbench is disabled
 {{- end }}
+{{ "" }}
+
+{{- if and .Values.graphrag.enabled .Values.graphrag.chatbot.enabled }}
+GraphRAG Chatbot is enabled
+  url = {{ tpl .Values.graphrag.chatbot.configuration.externalUrl . }}
+  image = {{ include "graphrag-chatbot.image" .Subcharts.graphrag.Subcharts.chatbot }}
+  replicas = {{ .Values.graphrag.chatbot.replicas }}
+{{- else }}
+GraphRAG is disabled
+{{- end }}
+{{ "" }}
+
+{{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
+GraphRAG Conversation is enabled
+  image = {{ include "graphrag-conversation.image" .Subcharts.graphrag.Subcharts.conversation }}
+  replicas = {{ .Values.graphrag.conversation.replicas }}
+{{- else }}
+GraphRAG Conversation is disabled
+{{- end }}
+{{ "" }}
+
+{{- if and .Values.graphrag.enabled .Values.graphrag.components.enabled }}
+GraphRAG Components is enabled
+  image = {{ include "graphrag-components.image" .Subcharts.graphrag.Subcharts.components }}
+  replicas = {{ .Values.graphrag.components.replicas }}
+{{- else }}
+GraphRAG Components is disabled
+{{- end }}
+{{ "" }}
+
+{{- if and .Values.graphrag.enabled .Values.graphrag.workflows.enabled }}
+GraphRAG Workflows is enabled
+  url = {{ tpl .Values.graphrag.workflows.configuration.externalUrl . }}
+  image = {{ include "graphrag-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
+  replicas = {{ .Values.graphrag.workflows.replicas }}
+{{- else }}
+GraphRAG Workflows is disabled
+{{- end }}
 
 ** Please be patient while the chart is being deployed and services are available **
   You can check their status with: kubectl --namespace {{ .Release.Namespace }} get pods

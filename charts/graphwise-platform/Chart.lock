@@ -17,5 +17,8 @@ dependencies:
 - name: semantic-workbench
   repository: https://poolparty-semantic-suite.github.io/charts
   version: 0.1.3
-digest: sha256:2cbf2698abf4f1c20312f79c1306e8144138e59c6005fd732f555577afcf863d
-generated: "2026-07-17T13:40:07.416219179+03:00"
+- name: graphrag
+  repository: https://poolparty-semantic-suite.github.io/graphrag-charts
+  version: 1.2.2
+digest: sha256:d1afb2eda41e0c7d9da2e623ddb6a457c9a08766d584f2bf904036bb582e3c31
+generated: "2026-07-28T15:20:23.235291368+03:00"

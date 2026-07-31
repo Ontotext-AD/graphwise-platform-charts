@@ -1,0 +1,72 @@
+{{- if and .Values.graphrag.enabled .Values.graphrag.workflows_postgres.enabled }}
+#
+# PostgreSQL cluster for GraphRAG Workflows.
+# See https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/
+#
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.graphrag.workflows_postgres.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  imageName: {{ include "graphwise-platform.graphrag.workflows_postgres.image" . }}
+  instances: {{ .Values.graphrag.workflows_postgres.replicas }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.graphrag.workflows_postgres.database.name }}
+      owner: {{ .Values.graphrag.workflows_postgres.database.owner }}
+  {{- with .Values.graphrag.workflows_postgres.postgresql }}
+  postgresql:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  storage:
+    {{- if .Values.graphrag.workflows_postgres.storage.storageClassName }}
+    storageClass: {{ .Values.graphrag.workflows_postgres.storage.storageClassName }}
+    {{- end }}
+    size: {{ .Values.graphrag.workflows_postgres.storage.size }}
+  {{- with .Values.graphrag.workflows_postgres.resources }}
+  resources: {{ toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.graphrag.workflows_postgres.serviceAccountTemplate }}
+  serviceAccountTemplate: {{ tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- with .Values.global.imagePullSecrets }}
+  imagePullSecrets:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- if .Values.graphrag.workflows_postgres.backups.enabled }}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: {{ .Values.graphrag.workflows_postgres.name }}
+  {{- end }}
+  {{- with .Values.graphrag.workflows_postgres.nodeSelector }}
+  affinity:
+    nodeSelector: {{ tpl (toYaml .) $ | nindent 6 }}
+  {{- end }}
+  {{- if and (gt (int .Values.graphrag.workflows_postgres.replicas) 1) (not .Values.graphrag.workflows_postgres.topologySpreadConstraints) }}
+  topologySpreadConstraints:
+    - topologyKey: topology.kubernetes.io/zone
+      maxSkew: 1
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: {{ .Values.graphrag.workflows_postgres.name }}
+    - topologyKey: kubernetes.io/hostname
+      maxSkew: 1
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: {{ .Values.graphrag.workflows_postgres.name }}
+  {{- end }}
+  {{- with .Values.graphrag.workflows_postgres.topologySpreadConstraints }}
+  topologySpreadConstraints:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+{{- end }}
