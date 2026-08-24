@@ -1,0 +1,40 @@
+#
+# Workflow that is triggered on new release publish.
+# It will post Slack notification using webhook and providing details about the release.
+#
+# The workflow requires:
+#   - secret providing the webhook address for Slack
+#
+
+name: Notifications
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse the release tag
+        id: tag_parser
+        env:
+          RELEASE_TAG: "${{ github.event.release.name }}"
+        run: |
+          echo "name=${RELEASE_TAG%-*}" >> $GITHUB_OUTPUT
+          echo "version=${RELEASE_TAG##*-}" >> $GITHUB_OUTPUT
+
+      - name: Send custom event details to a Slack workflow
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            name: "${{ steps.tag_parser.outputs.name }}"
+            release: "${{ steps.tag_parser.outputs.version }}"
+            status: "${{ job.status }}"
+            user: "${{ github.event.release.author.html_url }}"
+            repository: "https://github.com/${{ github.repository }}"
+            tag_link: "${{ github.event.release.html_url }}"
+            published_at: "${{ github.event.release.published_at }}"
