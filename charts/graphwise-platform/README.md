@@ -50,7 +50,7 @@ If you are deploying the Graph Automation or GraphRAG services, you will also ne
 Graphwise Workflows (powered by n8n):
 
 ```shell
-kubectl -n graphwise-platform create secret generic graphwise-workflows-license --from-file=N8N_LICENSE_ACTIVATION_KEY=n8n.key || true
+kubectl -n graphwise-platform create secret generic graphwise-workflows-license --from-file=LICENSE_KEY=n8n.key || true
 ```
 
 ### Image Pull Secrets
@@ -76,8 +76,7 @@ global:
 ### Secrets
 
 You can use or refer to the helper script [secrets.sh](../../scripts/secrets.sh). It will generate and provision all
-necessary
-secrets.
+necessary secrets.
 
 ```shell
 ../../scripts/secrets.sh create_secrets
@@ -117,11 +116,11 @@ directory.
 Once all dependencies are installed and all secrets and configurations are created, you can install the platform with:
 
 ```shell
-helm upgrade --install --namespace graphwise-platform graphwise-platform graphwise-platform
+helm upgrade --install --dependency-update --namespace graphwise-platform graphwise-platform graphwise-platform/graphwise-platform
 ```
 
-Note: If you are using Helm v4, you need to add the `--server-side=false` flag due
-to https://github.com/elastic/cloud-on-k8s/issues/8975
+> [!NOTE]
+> If you are using Helm v4, you need to add the `--server-side=false` flag due to https://github.com/elastic/cloud-on-k8s/issues/8975
 
 ## Uninstall
 

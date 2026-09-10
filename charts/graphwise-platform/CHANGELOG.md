@@ -2,6 +2,25 @@
 
 Changelog for the Graphwise Platform Helm chart.
 
+## 0.3.0
+
+### Breaking
+
+- Updated to GraphRAG chart 2.0.0 which replaces the GraphRAG Workflows Helm chart with a new generic Graphwise
+  Workflows Helm chart. See
+  the [Upgrade guide](https://github.com/poolparty-semantic-suite/graphrag-charts/blob/graphrag-2.0.0/charts/graphrag/UPGRADE.md#200)
+  for more details.
+
+### Updated
+
+- Updated to GraphRAG 1.3.0 with GraphRAG Helm chart 2.0.0
+- Simplified the secret generation to refer to `existingSecret` properties instead of duplicating them under `secrets`.
+
+### Fixed
+
+- Fixed the installation example in the README.md to use the correct `helm` CLI syntax.
+- Fixed the secret generation for GraphRAG to refer to the correct namespace and template variables.
+
 ## 0.2.0
 
 ### New

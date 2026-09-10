@@ -85,13 +85,6 @@ secrets:
   graphModeling:
     adminCredentialsSecretName: graph-modeling-admin-credentials
     secretPropertiesSecretName: graph-modeling-secret-properties
-  # Defines how to name and refer to GraphRAG Kubernetes Secret objects during secret generation.
-  graphrag:
-    conversation:
-      databaseCredentialsSecretName: graphrag-conversation-database-credentials
-      keycloakSecretsSecretName: graphrag-conversation-keycloak-secrets
-    workflows:
-      encryptionSecretName: graphrag-workflows-encryption
 
 ########################################################################################################################
 # GRAPHWISE PLATFORM - DEPENDENCIES
@@ -1126,37 +1119,34 @@ graphrag:
         cors.disable: false
         # N8N Settings
         n8n.base.url: http://graphrag-workflows:5678
-        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}
+        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}&custom={custom}
         # Keycloak settings
+        spring.security.oauth2.client.registration.keycloak.scope: openid
+        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
         spring.security.oauth2.resourceserver.jwt.jwk-set-uri: http://keycloak-service.keycloak:8080/auth/realms/poolparty/protocol/openid-connect/certs
         spring.security.oauth2.resourceserver.jwt.issuer-uri: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
-        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
-        spring.security.oauth2.client.registration.keycloak.scope: openid
         keycloak.health.url: http://keycloak-service.keycloak:9000/auth/health
         # Swagger settings
         springdoc.api-docs.server-url: /conversations
         springdoc.swagger-ui.config-url: /graphrag/conversations/v3/api-docs/swagger-config
         springdoc.swagger-ui.url: /graphrag/conversations/v3/api-docs
 
-    # Additional environment variables to be set in the GraphRAG Conversation container.
-    # Note the references to the Kubernetes Secrets: If you have created them with different names, you need
-    # to update them here.
-    extraEnv:
-      - name: spring.datasource.username
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-database-credentials
-            key: username
-      - name: spring.datasource.password
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-database-credentials
-            key: password
-      - name: spring.security.oauth2.client.registration.keycloak.client-secret
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-keycloak-secrets
-            key: client-secret
+      # Configurations for using DuckDB as a database for GraphRAG Conversation.
+      # Note the references to the Kubernetes Secret: If you have created it with a different name, you need
+      # to update it here.
+      duckdb:
+        credentials:
+          existingSecret: graphrag-conversation-database-credentials
+          usernameKey: username
+          passwordKey: password
+
+      # Configurations for Keycloak as an identity provider.
+      # Note the references to the Kubernetes Secret: If you have created it with a different name, you need
+      # to update it here.
+      keycloak:
+        oauth2_client:
+          existingSecret: graphrag-conversation-keycloak-secrets
+          clientSecretKey: client-secret
 
     # Persistence configurations for Graphrag Conversation service.
     persistence:
@@ -1203,7 +1193,7 @@ graphrag:
     # GraphRAG Components runtime configuration settings.
     configuration:
       # GraphRAG Components configuration properties to insert as environment variables.
-      # properties: {}
+      properties: {}
 
       # References to existing ConfigMap or Secret resources containing configuration properties that will be included
       # as environment variables.
@@ -1224,13 +1214,20 @@ graphrag:
 
   # GraphRAG Workflows configuration overrides.
   #
-  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-workflows/values.yaml
+  # Ref: https://github.com/poolparty-semantic-suite/graphwise-workflows-chart/blob/main/values.yaml
   workflows:
     # Toggles the deployment of the GraphRAG Workflows service.
     enabled: true
 
     # Name and name prefix for the GraphRAG Workflows resources.
     fullnameOverride: graphrag-workflows
+
+    # License configurations for the GraphRAG Workflows service.
+    license:
+      existingSecret: graphwise-workflows-license
+      licenseKey: LICENSE_KEY
+      # Update to your actual tenant identifier
+      tenantId: 1
 
     # GraphRAG Workflows runtime configuration settings.
     configuration:
@@ -1241,12 +1238,6 @@ graphrag:
       encryption:
         existingSecret: graphrag-workflows-encryption
 
-      # License configurations for the GraphRAG Workflows service.
-      license:
-        existingSecret: graphwise-workflows-license
-        # Update to your actual tenant identifier
-        tenantId: 1
-
       # Database configurations for the GraphRAG Workflows service.
       postgresdb:
         host: graphrag-workflows-postgres-rw
@@ -1255,6 +1246,18 @@ graphrag:
           existingSecret: graphrag-workflows-postgres-app
           usernameKey: username
           passwordKey: password
+
+    # Configurations for the bootstrap job that initializes the Workflows service with a baseline of workflows and other
+    # configurations.
+    # Note: This is a Kubernetes Job wrapped as a Helm hook that runs after the initial deployment.
+    bootstrap:
+      # Toggles the bootstrap Job deployment.
+      enabled: true
+
+      # Helm hook configurations.
+      hook:
+        annotations:
+          helm.sh/hook: post-install, post-upgrade
 
     # Ingress configuration for the GraphRAG Workflows service.
     #
