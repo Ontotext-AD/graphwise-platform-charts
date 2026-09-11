@@ -19,6 +19,6 @@ dependencies:
   version: 0.1.3
 - name: graphrag
   repository: https://poolparty-semantic-suite.github.io/graphrag-charts
-  version: 1.2.2
-digest: sha256:d1afb2eda41e0c7d9da2e623ddb6a457c9a08766d584f2bf904036bb582e3c31
-generated: "2026-07-28T15:20:23.235291368+03:00"
+  version: 2.0.0
+digest: sha256:f44bcef7a90ef40166a41acb606f562d44d2dd2ea2fe6bf258ae7c592d3fbad2
+generated: "2026-09-10T16:10:43.738749977+03:00"

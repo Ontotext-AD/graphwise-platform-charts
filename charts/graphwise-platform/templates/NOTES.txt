@@ -122,8 +122,12 @@ GraphRAG Components is disabled
 {{- if and .Values.graphrag.enabled .Values.graphrag.workflows.enabled }}
 GraphRAG Workflows is enabled
   url = {{ tpl .Values.graphrag.workflows.configuration.externalUrl . }}
-  image = {{ include "graphrag-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
+  image = {{ include "graphwise-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
   replicas = {{ .Values.graphrag.workflows.replicas }}
+  bootstrap: {{ ternary "enabled" "disabled" .Values.graphrag.workflows.bootstrap.enabled }}
+    {{- if.Values.graphrag.workflows.bootstrap.enabled }}
+    image: {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.graphrag.Subcharts.workflows }}
+    {{- end }}
 {{- else }}
 GraphRAG Workflows is disabled
 {{- end }}
