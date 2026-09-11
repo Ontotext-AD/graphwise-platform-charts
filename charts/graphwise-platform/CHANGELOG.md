@@ -10,11 +10,21 @@ Changelog for the Graphwise Platform Helm chart.
   Workflows Helm chart. See
   the [Upgrade guide](https://github.com/poolparty-semantic-suite/graphrag-charts/blob/graphrag-2.0.0/charts/graphrag/UPGRADE.md#200)
   for more details.
+- Configured `graphrag.workflows.name` so you need to re-create the Deplyoment resource if GraphRAG has been enabled.
+
+### New
+
+- Included [Graph Automation Helm chart](https://github.com/poolparty-semantic-suite/graph-automation-charts) as part of
+  the Graphwise Platform deployment. It is disabled by default, so you have to enable it. You can configure it with the
+  `automation` configuration section.
+- Added PostgreSQL cluster deployment for Graph Automation Workflows under `automation.workflows_postgres`.
+- Added secrets generation in `secrets.yaml` for the Graph Automation services
 
 ### Updated
 
 - Updated to GraphRAG 1.3.0 with GraphRAG Helm chart 2.0.0
 - Simplified the secret generation to refer to `existingSecret` properties instead of duplicating them under `secrets`.
+- Simplified the NOTES.txt output when GraphRAG is disabled
 
 ### Fixed
 

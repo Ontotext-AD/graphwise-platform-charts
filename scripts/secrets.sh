@@ -23,6 +23,9 @@ export GRAPHDB_CLUSTER_TOKEN_SECRET_NAME="graphdb-cluster-token"
 export GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME="graph-modeling-secret-properties"
 export GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME="graph-modeling-admin-credentials"
 
+export GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME="graph-automation-workflows-encryption"
+export GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME="graph-automation-workflows-task-runners-token"
+
 export GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME="graphrag-conversation-database-credentials"
 export GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME="graphrag-conversation-keycloak-secrets"
 export GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME="graphrag-workflows-encryption"
@@ -111,6 +114,13 @@ cleanup_secrets() {
   fi
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME}; then
     kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME}
+  fi
+  # Graph Automation
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}
   fi
   # GraphRAG
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
@@ -289,6 +299,30 @@ EOF
     kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME} \
             --from-literal=username="superadmin" \
             --from-literal=password="${GRAPH_MODELING_ADMIN_PASSWORD}"
+  fi
+
+  #
+  # Graph Automation Workflows encryption secret
+  #
+  GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME} \
+            --from-literal=N8N_ENCRYPTION_KEY="${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET}"
+  fi
+
+  #
+  # Graph Automation Workflows task runners auth token secret
+  #
+  GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME} \
+            --from-literal=N8N_RUNNERS_AUTH_TOKEN="${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN}"
   fi
 
   #

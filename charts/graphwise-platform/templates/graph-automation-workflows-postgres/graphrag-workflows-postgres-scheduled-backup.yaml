@@ -1,0 +1,21 @@
+{{- if and .Values.automation.enabled .Values.automation.workflows_postgres.enabled .Values.automation.workflows_postgres.backups.enabled -}}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ .Values.automation.workflows_postgres.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  cluster:
+    name: {{ .Values.automation.workflows_postgres.name }}
+  schedule: {{ .Values.automation.workflows_postgres.backups.schedule }}
+  suspend: false
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+{{- end }}
