@@ -111,7 +111,7 @@ elasticsearch:
   image:
     registry: docker.io
     repository: ontotext/poolparty-elasticsearch
-    tag: 9.3.8
+    tag: 9.4.5
     digest: ""
 
   # Number of Elasticsearch nodes to deploy in the cluster.
@@ -266,7 +266,7 @@ keycloak:
   image:
     registry: docker.io
     repository: ontotext/poolparty-keycloak
-    tag: 2.3.0
+    tag: 2.6.1
     digest: ""
 
   # Number of Keycloak instances to deploy.
@@ -280,6 +280,13 @@ keycloak:
     # The base URL for accessing Keycloak.
     # This must be a FQDN hostname, including any protocol and context path.
     hostname: '{{ include "graphwise-platform.url" . }}/auth'
+
+    # Extra configurations for Keycloak injected as environment variables.
+    # Values are processed as Helm templates with the tpl function.
+    properties:
+      POOLPARTY_KEYCLOAK_REALM: poolparty
+      SUPERADMIN_REQUIRES_ACTIONS: false
+
     # Reference to a Secret object containing the credentials for the Keycloak admin user.
     # This is used only during the initial Keycloak bootstrap which initializes the instance.
     # Consecutive Keycloak restarts will not use the credentials from the Secret, but other components might.
@@ -287,6 +294,7 @@ keycloak:
       name: keycloak-admin-credentials
       adminUsernameKey: KEYCLOAK_ADMIN
       adminPasswordKey: KEYCLOAK_ADMIN_PASSWORD
+
     # Reference to a Secret object containing credentials for the Graph Modeling realm and clients.
     # This is used only during the initial Keycloak bootstrap which initializes the instance and imports a dedicated
     # realm for the Graphwise Platform.
@@ -294,7 +302,10 @@ keycloak:
     graphModelingSecret:
       name: keycloak-graph-modeling-secret-properties
       adminPasswordKey: POOLPARTY_SUPER_ADMIN_PASSWORD
-      clientSecretKey: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+      taxonomyClientSecretKey: PPT_KEYCLOAK_LOGIN_CLIENTSECRET
+      extractorClientSecretKey: EXTRACTOR_KEYCLOAK_LOGIN_CLIENTSECRET
+      graphSearchClientSecretKey: PPGS_KEYCLOAK_LOGIN_CLIENTSECRET
+      recommenderClientSecretKey: RECOMMENDER_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Additional environment variables to provide to the Keycloak pods.
   # Values are processed as Helm templates with the tpl function.
@@ -772,14 +783,29 @@ graph-modeling:
     # Graph Modeling configuration properties.
     properties:
       POOLPARTY_SERVER_PORT: 8080
+      # GraphDB configurations
       POOLPARTY_GRAPHDB_URL: http://graphdb:7200
+      # Elasticsearch configurations
+      POOLPARTY_INDEX_TYPE: elasticsearch
       POOLPARTY_INDEX_URL: http://elasticsearch-es-http:9200
+      # Keycloak configurations
       POOLPARTY_KEYCLOAK_AUTHURL: http://keycloak-service.keycloak:8080/auth/
+      POOLPARTY_KEYCLOAK_ADMIN_REALM: master
+      POOLPARTY_KEYCLOAK_ADMIN_CLIENTID: admin-cli
+      POOLPARTY_KEYCLOAK_LOGIN_REALM: poolparty
       # Used in the data
       _POOLPARTY_URL_BASE_SCHEME: '{{ include "graphwise-platform.url" . }}'
       _POOLPARTY_URL_BASE_VOCABULARY: '{{ include "graphwise-platform.url" . }}'
       _POOLPARTY_URL_BASE_USER: '{{ include "graphwise-platform.url" . }}/user'
       _POOLPARTY_URL_BASE_CONTEXT: '{{ include "graphwise-platform.url" . }}'
+      # Clients generated in the Keycloak realm for Graph Modeling.
+      # Under normal circumstances, you should not need to change these values.
+      POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTID: ppt
+      POOLPARTY_PPGS_KEYCLOAK_LOGIN_CLIENTID: ppgs
+      POOLPARTY_PPX_KEYCLOAK_LOGIN_CLIENTID: extractor
+      # Enables granular access control for the Graph Modeling service.
+      # If Graph Modeling addons are enabled, this should remain set to false.
+      POOLPARTY_AUTH_OPENID_REQUIRE_AUDIENCE: false
 
     propertiesOverrides:
       # Reference to an existing Secret resource containing sensitive Graph Modeling configuration settings.
@@ -867,7 +893,8 @@ adf:
 
     # ADF configuration properties.
     properties:
-      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      KEYCLOAK_PUBLIC_URL: '{{ include "graphwise-platform.url" . }}/auth'
+      KEYCLOAK_INTERNAL_URL: http://keycloak-service.keycloak:8080/auth/
       POOLPARTY_URL: http://graph-modeling:8080
       ADF_REQUIRE_UI_AUTHENTICATION: "true"
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
@@ -886,7 +913,7 @@ adf:
       valueFrom:
         secretKeyRef:
           name: graph-modeling-secret-properties
-          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+          key: POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Persistence configurations for ADF.
   persistence:
@@ -995,7 +1022,8 @@ semantic-workbench:
 
     # Semantic Workbench configuration properties.
     properties:
-      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      KEYCLOAK_PUBLIC_URL: '{{ include "graphwise-platform.url" . }}/auth'
+      KEYCLOAK_INTERNAL_URL: http://keycloak-service.keycloak:8080/auth/
       POOLPARTY_URL: http://graph-modeling:8080
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
@@ -1013,7 +1041,7 @@ semantic-workbench:
       valueFrom:
         secretKeyRef:
           name: graph-modeling-secret-properties
-          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+          key: POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Persistence configurations for Semantic Workbench.
   persistence:
