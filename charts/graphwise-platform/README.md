@@ -55,8 +55,8 @@ kubectl -n graphwise-platform create secret generic graphwise-workflows-license 
 
 ### Image Pull Secrets
 
-If you use the GraphRAG services, you need to create a Secret for the container registry that Graphwise use to host the
-images:
+If you use the Graph Automation or the GraphRAG services, you need to create a Secret for the container registry that
+Graphwise use to host the images:
 
 ```shell
 kubectl -n graphwise-platform create secret docker-registry graphwise-private \
@@ -100,6 +100,12 @@ constraints.
 
 It's best if you start with checking out the main [values.yaml](values.yaml) file and then check the respective
 `values.yaml` for each sub-chart.
+
+### Graph Automation
+
+Follow the instructions in
+the [Graph Automation repository](https://github.com/poolparty-semantic-suite/graph-automation-charts) to configure the
+Graph Automation services.
 
 ### GraphRAG
 

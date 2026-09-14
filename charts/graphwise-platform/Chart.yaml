@@ -7,7 +7,7 @@ description: |
   Umbrella chart for deploying Graphwise Platform:
   The Enterprise AI Platform that turns fragmented data into hallucination-free business outcomes.
 type: application
-version: 0.2.0
+version: 0.3.0
 kubeVersion: ^1.34.0-0
 home: https://graphwise.ai/
 icon: https://graphwise.ai/wp-content/uploads/2024/10/cropped-graphwise_favicon-192x192.png
@@ -66,6 +66,14 @@ dependencies:
     version: 0.1.3
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: semantic-workbench.enabled
+
+  # https://github.com/poolparty-semantic-suite/graph-automation-charts
+  # Graph Automation 1.0.0-M1
+  - name: graphwise-graph-automation
+    version: 0.1.0
+    repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
+    condition: automation.enabled
+    alias: automation
 
   # https://github.com/poolparty-semantic-suite/graphrag-charts
   # GraphRAG 1.3.0

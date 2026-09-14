@@ -36,6 +36,7 @@ jobs:
           helm repo add ontotext https://maven.ontotext.com/repository/helm-public/
           helm repo add poolparty https://poolparty-semantic-suite.github.io/charts
           helm repo add graphrag https://poolparty-semantic-suite.github.io/graphrag-charts
+          helm repo add graph-automation https://poolparty-semantic-suite.github.io/graph-automation-charts
 
       - id: run_chart_releaser
         name: Run chart-releaser

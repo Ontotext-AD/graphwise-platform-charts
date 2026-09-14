@@ -1,0 +1,32 @@
+{{- if and .Values.automation.enabled .Values.automation.workflows_postgres.enabled .Values.automation.workflows_postgres.backups.enabled -}}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ .Values.automation.workflows_postgres.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  configuration:
+    destinationPath: {{ required "Object store destination is required" .Values.automation.workflows_postgres.backups.destination }}
+    {{- with .Values.automation.workflows_postgres.backups.s3Credentials }}
+    s3Credentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    {{- with .Values.automation.workflows_postgres.backups.azureCredentials }}
+    azureCredentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    {{- with .Values.automation.workflows_postgres.backups.googleCredentials }}
+    googleCredentials:
+      {{- tpl (toYaml .) $ | nindent 6 }}
+    {{- end }}
+    wal:
+      compression: "gzip"
+    data:
+      compression: "gzip"
+  retentionPolicy: {{ .Values.automation.workflows_postgres.backups.retention }}
+{{- end }}
