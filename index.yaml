@@ -23,6 +23,67 @@ entries:
     version: 1.0.0
   graphwise-platform:
   - apiVersion: v2
+    created: "2026-09-15T12:25:13.76675567Z"
+    dependencies:
+    - alias: elasticsearch_snapshots
+      condition: elasticsearch_snapshots.enabled
+      name: elasticsearch-snapshots
+      repository: file://../elasticsearch-snapshots
+      version: 1.0.0
+    - condition: graphdb.enabled
+      name: graphdb
+      repository: https://maven.ontotext.com/repository/helm-public/
+      version: 12.5.0
+    - alias: graph-modeling
+      condition: graph-modeling.enabled
+      name: poolparty
+      repository: https://poolparty-semantic-suite.github.io/charts
+      version: 1.0.1
+    - condition: adf.enabled
+      name: adf
+      repository: https://poolparty-semantic-suite.github.io/charts
+      version: 1.0.1
+    - condition: graphviews.enabled
+      name: graphviews
+      repository: https://poolparty-semantic-suite.github.io/charts
+      version: 0.2.0
+    - condition: semantic-workbench.enabled
+      name: semantic-workbench
+      repository: https://poolparty-semantic-suite.github.io/charts
+      version: 1.0.1
+    - alias: automation
+      condition: automation.enabled
+      name: graphwise-graph-automation
+      repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
+      version: 0.1.0
+    - condition: graphrag.enabled
+      name: graphrag
+      repository: https://poolparty-semantic-suite.github.io/graphrag-charts
+      version: 2.0.1
+    description: 'Umbrella chart for deploying Graphwise Platform: The Enterprise
+      AI Platform that turns fragmented data into hallucination-free business outcomes. '
+    digest: 2583bd181afcb11f78594ed0023c06de4e8066725029a85211f216a4919fc296
+    home: https://graphwise.ai/
+    icon: https://graphwise.ai/wp-content/uploads/2024/10/cropped-graphwise_favicon-192x192.png
+    keywords:
+    - graphwise
+    - graphdb
+    - graph modeling
+    - knowledge graph
+    - enterprise data
+    kubeVersion: ^1.34.0-0
+    maintainers:
+    - email: dnd@graphwise.ai
+      name: Ontotext-AD
+      url: https://graphwise.ai
+    name: graphwise-platform
+    sources:
+    - https://github.com/Ontotext-AD/graphwise-platform-charts
+    type: application
+    urls:
+    - https://github.com/Ontotext-AD/graphwise-platform-charts/releases/download/graphwise-platform-0.3.0/graphwise-platform-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
     created: "2026-07-31T08:24:55.902402547Z"
     dependencies:
     - alias: elasticsearch_snapshots
@@ -197,4 +258,4 @@ entries:
     urls:
     - https://github.com/Ontotext-AD/graphwise-platform-charts/releases/download/keycloak-operator-1.0.0/keycloak-operator-1.0.0.tgz
     version: 1.0.0
-generated: "2026-07-31T08:24:55.902415136Z"
+generated: "2026-09-15T12:25:13.766770458Z"
