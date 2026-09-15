@@ -38,6 +38,16 @@ semantic-workbench:
     enabled: true
     className: nginx
 
+automation:
+  workflows:
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      path: /automation(/|$)(.*)
+      pathType: ImplementationSpecific
+
 graphrag:
   chatbot:
     ingress:

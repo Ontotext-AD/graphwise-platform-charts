@@ -91,17 +91,46 @@ Semantic Workbench is disabled
 {{- end }}
 {{ "" }}
 
-{{- if and .Values.graphrag.enabled .Values.graphrag.chatbot.enabled }}
+{{- if .Values.automation.enabled }}
+{{- if .Values.automation.workflows.enabled }}
+Graph Automation Workflows are enabled
+  url = {{ tpl .Values.automation.workflows.configuration.externalUrl . }}
+  image = {{ include "graphwise-workflows.image" .Subcharts.automation.Subcharts.workflows }}
+  replicas = {{ .Values.automation.workflows.replicas }}
+  bootstrap = {{ ternary "enabled" "disabled" .Values.automation.workflows.bootstrap.enabled }}
+    {{- if.Values.automation.workflows.bootstrap.enabled }}
+    image = {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.automation.Subcharts.workflows }}
+    {{- end }}
+{{- else }}
+Graph Automation Workflows are disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.workflows_postgres.enabled }}
+Graph Automation Workflows PostgreSQL is enabled
+  image = {{ include "graphwise-platform.graph-automation.workflows_postgres.image" . }}
+  replicas = {{ .Values.automation.workflows_postgres.replicas }}
+  backups = {{ .Values.automation.workflows_postgres.backups.enabled }}
+{{- else }}
+Graph Automation Workflows PostgreSQL is disabled
+{{- end }}
+{{- else }}
+Graph Automation is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.graphrag.enabled }}
+{{- if .Values.graphrag.chatbot.enabled }}
 GraphRAG Chatbot is enabled
   url = {{ tpl .Values.graphrag.chatbot.configuration.externalUrl . }}
   image = {{ include "graphrag-chatbot.image" .Subcharts.graphrag.Subcharts.chatbot }}
   replicas = {{ .Values.graphrag.chatbot.replicas }}
 {{- else }}
-GraphRAG is disabled
+GraphRAG Chatbot is disabled
 {{- end }}
 {{ "" }}
 
-{{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
+{{- if .Values.graphrag.conversation.enabled }}
 GraphRAG Conversation is enabled
   image = {{ include "graphrag-conversation.image" .Subcharts.graphrag.Subcharts.conversation }}
   replicas = {{ .Values.graphrag.conversation.replicas }}
@@ -110,7 +139,7 @@ GraphRAG Conversation is disabled
 {{- end }}
 {{ "" }}
 
-{{- if and .Values.graphrag.enabled .Values.graphrag.components.enabled }}
+{{- if .Values.graphrag.components.enabled }}
 GraphRAG Components is enabled
   image = {{ include "graphrag-components.image" .Subcharts.graphrag.Subcharts.components }}
   replicas = {{ .Values.graphrag.components.replicas }}
@@ -119,13 +148,30 @@ GraphRAG Components is disabled
 {{- end }}
 {{ "" }}
 
-{{- if and .Values.graphrag.enabled .Values.graphrag.workflows.enabled }}
-GraphRAG Workflows is enabled
+{{- if .Values.graphrag.workflows.enabled }}
+GraphRAG Workflows are enabled
   url = {{ tpl .Values.graphrag.workflows.configuration.externalUrl . }}
-  image = {{ include "graphrag-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
+  image = {{ include "graphwise-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
   replicas = {{ .Values.graphrag.workflows.replicas }}
+  bootstrap = {{ ternary "enabled" "disabled" .Values.graphrag.workflows.bootstrap.enabled }}
+    {{- if.Values.graphrag.workflows.bootstrap.enabled }}
+    image = {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.graphrag.Subcharts.workflows }}
+    {{- end }}
 {{- else }}
-GraphRAG Workflows is disabled
+GraphRAG Workflows are disabled
+{{- end }}
+{{ "" }}
+
+{{- if.Values.graphrag.workflows_postgres.enabled }}
+GraphRAG Workflows PostgreSQL is enabled
+  image = {{ include "graphwise-platform.graphrag.workflows_postgres.image" . }}
+  replicas = {{ .Values.graphrag.workflows_postgres.replicas }}
+  backups = {{ .Values.graphrag.workflows_postgres.backups.enabled }}
+{{- else }}
+GraphRAG Workflows PostgreSQL is disabled
+{{- end }}
+{{- else }}
+GraphRAG is disabled
 {{- end }}
 
 ** Please be patient while the chart is being deployed and services are available **

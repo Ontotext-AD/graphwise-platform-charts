@@ -4,21 +4,24 @@ dependencies:
   version: 1.0.0
 - name: graphdb
   repository: https://maven.ontotext.com/repository/helm-public/
-  version: 12.4.0
+  version: 12.5.0
 - name: poolparty
   repository: https://poolparty-semantic-suite.github.io/charts
-  version: 0.3.3
+  version: 1.0.1
 - name: adf
   repository: https://poolparty-semantic-suite.github.io/charts
-  version: 0.1.3
+  version: 1.0.1
 - name: graphviews
   repository: https://poolparty-semantic-suite.github.io/charts
-  version: 0.1.1
+  version: 0.2.0
 - name: semantic-workbench
   repository: https://poolparty-semantic-suite.github.io/charts
-  version: 0.1.3
+  version: 1.0.1
+- name: graphwise-graph-automation
+  repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
+  version: 0.1.0
 - name: graphrag
   repository: https://poolparty-semantic-suite.github.io/graphrag-charts
-  version: 1.2.2
-digest: sha256:d1afb2eda41e0c7d9da2e623ddb6a457c9a08766d584f2bf904036bb582e3c31
-generated: "2026-07-28T15:20:23.235291368+03:00"
+  version: 2.0.1
+digest: sha256:b8029f8f1eafda89ac535be21232f3fe6704629e9a86bbaa0b2f614900237841
+generated: "2026-09-15T14:26:24.644538403+03:00"

@@ -85,13 +85,6 @@ secrets:
   graphModeling:
     adminCredentialsSecretName: graph-modeling-admin-credentials
     secretPropertiesSecretName: graph-modeling-secret-properties
-  # Defines how to name and refer to GraphRAG Kubernetes Secret objects during secret generation.
-  graphrag:
-    conversation:
-      databaseCredentialsSecretName: graphrag-conversation-database-credentials
-      keycloakSecretsSecretName: graphrag-conversation-keycloak-secrets
-    workflows:
-      encryptionSecretName: graphrag-workflows-encryption
 
 ########################################################################################################################
 # GRAPHWISE PLATFORM - DEPENDENCIES
@@ -118,7 +111,7 @@ elasticsearch:
   image:
     registry: docker.io
     repository: ontotext/poolparty-elasticsearch
-    tag: 9.3.8
+    tag: 9.4.5
     digest: ""
 
   # Number of Elasticsearch nodes to deploy in the cluster.
@@ -273,7 +266,7 @@ keycloak:
   image:
     registry: docker.io
     repository: ontotext/poolparty-keycloak
-    tag: 2.3.0
+    tag: 2.6.1
     digest: ""
 
   # Number of Keycloak instances to deploy.
@@ -287,6 +280,13 @@ keycloak:
     # The base URL for accessing Keycloak.
     # This must be a FQDN hostname, including any protocol and context path.
     hostname: '{{ include "graphwise-platform.url" . }}/auth'
+
+    # Extra configurations for Keycloak injected as environment variables.
+    # Values are processed as Helm templates with the tpl function.
+    properties:
+      POOLPARTY_KEYCLOAK_REALM: poolparty
+      SUPERADMIN_REQUIRES_ACTIONS: false
+
     # Reference to a Secret object containing the credentials for the Keycloak admin user.
     # This is used only during the initial Keycloak bootstrap which initializes the instance.
     # Consecutive Keycloak restarts will not use the credentials from the Secret, but other components might.
@@ -294,6 +294,7 @@ keycloak:
       name: keycloak-admin-credentials
       adminUsernameKey: KEYCLOAK_ADMIN
       adminPasswordKey: KEYCLOAK_ADMIN_PASSWORD
+
     # Reference to a Secret object containing credentials for the Graph Modeling realm and clients.
     # This is used only during the initial Keycloak bootstrap which initializes the instance and imports a dedicated
     # realm for the Graphwise Platform.
@@ -301,7 +302,10 @@ keycloak:
     graphModelingSecret:
       name: keycloak-graph-modeling-secret-properties
       adminPasswordKey: POOLPARTY_SUPER_ADMIN_PASSWORD
-      clientSecretKey: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+      taxonomyClientSecretKey: PPT_KEYCLOAK_LOGIN_CLIENTSECRET
+      extractorClientSecretKey: EXTRACTOR_KEYCLOAK_LOGIN_CLIENTSECRET
+      graphSearchClientSecretKey: PPGS_KEYCLOAK_LOGIN_CLIENTSECRET
+      recommenderClientSecretKey: RECOMMENDER_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Additional environment variables to provide to the Keycloak pods.
   # Values are processed as Helm templates with the tpl function.
@@ -432,7 +436,7 @@ keycloak_postgres:
   storage:
     # Explicit storage class to use for the PostgreSQL database cluster.
     # Leave empty to use the default storage class in your Kubernetes cluster.
-    storageClassName:
+    storageClassName: ""
     size: 10Gi
 
   # Resource configurations for the PostgreSQL pods.
@@ -779,14 +783,29 @@ graph-modeling:
     # Graph Modeling configuration properties.
     properties:
       POOLPARTY_SERVER_PORT: 8080
+      # GraphDB configurations
       POOLPARTY_GRAPHDB_URL: http://graphdb:7200
+      # Elasticsearch configurations
+      POOLPARTY_INDEX_TYPE: elasticsearch
       POOLPARTY_INDEX_URL: http://elasticsearch-es-http:9200
+      # Keycloak configurations
       POOLPARTY_KEYCLOAK_AUTHURL: http://keycloak-service.keycloak:8080/auth/
+      POOLPARTY_KEYCLOAK_ADMIN_REALM: master
+      POOLPARTY_KEYCLOAK_ADMIN_CLIENTID: admin-cli
+      POOLPARTY_KEYCLOAK_LOGIN_REALM: poolparty
       # Used in the data
       _POOLPARTY_URL_BASE_SCHEME: '{{ include "graphwise-platform.url" . }}'
       _POOLPARTY_URL_BASE_VOCABULARY: '{{ include "graphwise-platform.url" . }}'
       _POOLPARTY_URL_BASE_USER: '{{ include "graphwise-platform.url" . }}/user'
       _POOLPARTY_URL_BASE_CONTEXT: '{{ include "graphwise-platform.url" . }}'
+      # Clients generated in the Keycloak realm for Graph Modeling.
+      # Under normal circumstances, you should not need to change these values.
+      POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTID: ppt
+      POOLPARTY_PPGS_KEYCLOAK_LOGIN_CLIENTID: ppgs
+      POOLPARTY_PPX_KEYCLOAK_LOGIN_CLIENTID: extractor
+      # Enables granular access control for the Graph Modeling service.
+      # If Graph Modeling addons are enabled, this should remain set to false.
+      POOLPARTY_AUTH_OPENID_REQUIRE_AUDIENCE: false
 
     propertiesOverrides:
       # Reference to an existing Secret resource containing sensitive Graph Modeling configuration settings.
@@ -874,7 +893,8 @@ adf:
 
     # ADF configuration properties.
     properties:
-      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      KEYCLOAK_PUBLIC_URL: '{{ include "graphwise-platform.url" . }}/auth'
+      KEYCLOAK_INTERNAL_URL: http://keycloak-service.keycloak:8080/auth/
       POOLPARTY_URL: http://graph-modeling:8080
       ADF_REQUIRE_UI_AUTHENTICATION: "true"
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
@@ -893,7 +913,7 @@ adf:
       valueFrom:
         secretKeyRef:
           name: graph-modeling-secret-properties
-          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+          key: POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Persistence configurations for ADF.
   persistence:
@@ -1002,7 +1022,8 @@ semantic-workbench:
 
     # Semantic Workbench configuration properties.
     properties:
-      KEYCLOAK_URL: http://keycloak-service.keycloak:8080/auth/
+      KEYCLOAK_PUBLIC_URL: '{{ include "graphwise-platform.url" . }}/auth'
+      KEYCLOAK_INTERNAL_URL: http://keycloak-service.keycloak:8080/auth/
       POOLPARTY_URL: http://graph-modeling:8080
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty/protocol/openid-connect/auth'
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
@@ -1020,7 +1041,7 @@ semantic-workbench:
       valueFrom:
         secretKeyRef:
           name: graph-modeling-secret-properties
-          key: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+          key: POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTSECRET
 
   # Persistence configurations for Semantic Workbench.
   persistence:
@@ -1049,12 +1070,245 @@ semantic-workbench:
       memory: 2Gi
 
 ########################################################################################################################
+# GRAPHWISE PLATFORM - GRAPH AUTOMATION SERVICES
+########################################################################################################################
+
+# Graphwise Graph Automation configuration overrides
+#
+# This chart deploys Graphwise Graph Automation services as part of the Graphwise Platform suite.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/graph-automation-charts
+automation:
+  enabled: false
+
+  # Graph Automation Workflows configuration overrides.
+  #
+  # Ref: https://github.com/poolparty-semantic-suite/graphwise-workflows-chart/blob/main/values.yaml
+  workflows:
+    enabled: true
+
+    # Name and name prefix for the Graph Automation Workflows resources.
+    nameOverride: graph-automation-workflows
+    fullnameOverride: graph-automation-workflows
+
+    # License configurations for the Graph Automation Workflows service.
+    license:
+      existingSecret: graphwise-workflows-license
+      licenseKey: LICENSE_KEY
+      # Update to your actual tenant identifier
+      tenantId: 1
+
+    # Graph Automation Workflows runtime configuration settings.
+    configuration:
+      # The external URL at which Graph Automation Workflows should be accessible.
+      externalUrl: '{{ include "graphwise-platform.url" . }}/automation/'
+
+      # Encryption configurations for the Graph Automation Workflows service.
+      encryption:
+        existingSecret: graph-automation-workflows-encryption
+
+      # Database configurations for the Graph Automation Workflows service.
+      postgresdb:
+        host: graph-automation-workflows-postgres-rw
+        database: graph-automation
+        credentials:
+          existingSecret: graph-automation-workflows-postgres-app
+          usernameKey: username
+          passwordKey: password
+
+    # No bootstrap automation for Graph Automation Workflows yet.
+    bootstrap:
+      enabled: false
+
+    # Ingress configuration for the Graph Automation Workflows service.
+    #
+    # The ingress in this chart makes no assumptions of what Ingress controller is being used. It's up to you to
+    # define any specific annotations required by the controller implementation in your cluster.
+    #
+    # Note that to deploy the Graph Automation Workflows service on a subpath, depending on the Ingress controller,
+    # you have to strip out the subpath from the upstream request.
+    #
+    # See the sub chart for further details.
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+
+    # Persistence configurations for Graph Automation Workflows.
+    # Disabled by default.
+    persistence:
+      enabled: false
+
+      volumeClaim:
+        spec:
+          # You can pass an explicit storage class name here or rely on the default storage class in your
+          # Kubernetes cluster.
+          # storageClassName:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+
+    # Resource configurations for the Graph Automation Workflows pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+    # Workflows task runners configuration overrides.
+    #
+    # Task runners are a side-car container that runs any tasks triggered by the Code node.
+    runners:
+      # Enabling this will deploy the task runners as a side-car container.
+      # Disabling this will default to internal task runners.
+      enabled: true
+
+      # Graph Automation Workflows task runners configuration settings.
+      configuration:
+        # Authentication token for the Workflows task runners and the main Workflows instances.
+        token:
+          # Reference to a Secret containing a field with the authentication token.
+          # This is a mandatory secret when the runners are enabled.
+          existingSecret: graph-automation-workflows-task-runners-token
+          # Name of the key in the existing Secret that contains the authentication token.
+          tokenKey: N8N_RUNNERS_AUTH_TOKEN
+
+      persistence:
+        # Shared volume for storing data between Graph Automation Workflows instances and the task runners.
+        shared:
+          enabled: true
+          # Configurations for an ephemeral emptyDir volume to be used for shared data storage.
+          emptyDir:
+            sizeLimit: 1Gi
+
+      # Resource configurations for the Graph Automation Workflows task runners containers.
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+
+  # PostgreSQL for Graph Automation Workflows.
+  #
+  # This chart deploys a PostgreSQL database cluster for the Graph Automation Workflows using the CNPG Kubernetes operator.
+  #
+  # You can use your own PostgreSQL but have to provide the necessary configuration overrides to the rest of the
+  # services so they can connect to it.
+  #
+  # Ref: https://cloudnative-pg.io/docs
+  workflows_postgres:
+    # Toggles the deployment of the PostgreSQL database cluster.
+    enabled: true
+
+    # Name and name prefix for the PostgreSQL database cluster resources.
+    name: graph-automation-workflows-postgres
+
+    # Number of database nodes to deploy in the PostgreSQL cluster.
+    # Set value to 1 to run a standalone PostgreSQL instance.
+    # Set to 2 or more to run a multi-node PostgreSQL cluster.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+    replicas: 1
+
+    # Image configurations for PostgreSQL.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/
+    image:
+      registry: ghcr.io
+      repository: cloudnative-pg/postgresql
+      tag: 16.14-standard-trixie
+      digest: ""
+
+    # Configurations for the Graph Automation Workflows PostgreSQL database cluster.
+    database:
+      name: graph-automation
+      owner: graph-automation
+
+    # Configurations for the PostgreSQL database cluster. Passed directly to the CustomResource.
+    postgresql:
+      parameters:
+        # Prevents filling up the disk with unprocessed WAL archives. Use -1 to disable.
+        # See https://cloudnative-pg.io/docs/1.28/replication/#capping-the-wal-size-retained-for-replication-slots
+        max_slot_wal_keep_size: 4GB
+
+    # Configurations for PostgreSQL backups via the CNPG barman plugin.
+    # The plugin is configured to upload backups in a compatible object store.
+    # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/
+    backups:
+      # Toggles the backup schedule.
+      enabled: false
+      # Object storage URL where the backups will be uploaded to.
+      # The plugin will also create a subfolder based on the PostgreSQL cluster name.
+      destination: ""
+      # The schedule for taking backups.
+      schedule: 0 0 0 * * *
+      # Defines the retention policy for the backups.
+      retention: 30d
+      # Credentials configuration when the chart is deployed in AWS and is configured to upload
+      # backups to S3.
+      # Values are processed as Helm templates with the tpl function.
+      # REf: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#aws-s3
+      s3Credentials: {}
+      # Credentials configuration when the chart is deployed in Azure and is configured to upload
+      # backups to Azure Blob Storage.
+      # Values are processed as Helm templates with the tpl function.
+      # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#azure-blob-storage
+      azureCredentials: {}
+      # Credentials configuration when the chart is deployed in Google Cloud and is configured to upload
+      # backups to Google Cloud Storage.
+      # Values are processed as Helm templates with the tpl function.
+      # Ref: https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/#google-cloud-storage
+      googleCredentials: {}
+
+    # Storage configurations for the PostgreSQL database cluster.
+    storage:
+      # Explicit storage class to use for the PostgreSQL database cluster.
+      # Leave empty to use the default storage class in your Kubernetes cluster.
+      storageClassName: ""
+      size: 10Gi
+
+    # Resource configurations for the PostgreSQL pods.
+    # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+    resources:
+      requests:
+        memory: 2Gi
+      limits:
+        memory: 2Gi
+
+    # Configurations for a ServiceAccount for the PostgreSQL database cluster.
+    # Value is processed as a Helm template with the tpl function.
+    serviceAccountTemplate: {}
+
+    # Selector labels to match when selecting nodes.
+    # Values are processed as Helm templates with the tpl function.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    # By default, the chart will assign default topology spread constraints
+    # if graph-automation.workflows_postgres.replicas > 1, but you can override them with this
+    # regardless of the replicas value.
+    #
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+    topologySpreadConstraints: []
+
+########################################################################################################################
 # GRAPHWISE PLATFORM - GRAPHRAG SERVICES
 ########################################################################################################################
 
 # Graphwise GraphRAG configuration overrides
 #
-# This chart deploys Graphwise GraphRAG service as part of the Graphwise Platform AI Suite.
+# This chart deploys Graphwise GraphRAG services as part of the Graphwise Platform AI Suite.
 #
 # You can check the following reference for the full set of configuration options:
 # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts
@@ -1097,7 +1351,7 @@ graphrag:
       className: ""
       annotations: {}
 
-    # Resource configurations for the Graphrag Chatbot pods.
+    # Resource configurations for the GraphRAG Chatbot pods.
     resources:
       requests:
         memory: 256Mi
@@ -1126,39 +1380,36 @@ graphrag:
         cors.disable: false
         # N8N Settings
         n8n.base.url: http://graphrag-workflows:5678
-        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}
+        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}&custom={custom}
         # Keycloak settings
+        spring.security.oauth2.client.registration.keycloak.scope: openid
+        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
         spring.security.oauth2.resourceserver.jwt.jwk-set-uri: http://keycloak-service.keycloak:8080/auth/realms/poolparty/protocol/openid-connect/certs
         spring.security.oauth2.resourceserver.jwt.issuer-uri: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
-        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
-        spring.security.oauth2.client.registration.keycloak.scope: openid
         keycloak.health.url: http://keycloak-service.keycloak:9000/auth/health
         # Swagger settings
         springdoc.api-docs.server-url: /conversations
         springdoc.swagger-ui.config-url: /graphrag/conversations/v3/api-docs/swagger-config
         springdoc.swagger-ui.url: /graphrag/conversations/v3/api-docs
 
-    # Additional environment variables to be set in the GraphRAG Conversation container.
-    # Note the references to the Kubernetes Secrets: If you have created them with different names, you need
-    # to update them here.
-    extraEnv:
-      - name: spring.datasource.username
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-database-credentials
-            key: username
-      - name: spring.datasource.password
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-database-credentials
-            key: password
-      - name: spring.security.oauth2.client.registration.keycloak.client-secret
-        valueFrom:
-          secretKeyRef:
-            name: graphrag-conversation-keycloak-secrets
-            key: client-secret
+      # Configurations for using DuckDB as a database for GraphRAG Conversation.
+      # Note the references to the Kubernetes Secret: If you have created it with a different name, you need
+      # to update it here.
+      duckdb:
+        credentials:
+          existingSecret: graphrag-conversation-database-credentials
+          usernameKey: username
+          passwordKey: password
 
-    # Persistence configurations for Graphrag Conversation service.
+      # Configurations for Keycloak as an identity provider.
+      # Note the references to the Kubernetes Secret: If you have created it with a different name, you need
+      # to update it here.
+      keycloak:
+        oauth2_client:
+          existingSecret: graphrag-conversation-keycloak-secrets
+          clientSecretKey: client-secret
+
+    # Persistence configurations for GraphRAG Conversation service.
     persistence:
       enabled: true
       volumeClaimTemplate:
@@ -1171,7 +1422,7 @@ graphrag:
             requests:
               storage: 2Gi
 
-    # Resource configurations for the Graphrag Conversation pods.
+    # Resource configurations for the GraphRAG Conversation pods.
     resources:
       limits:
         memory: 1Gi
@@ -1203,13 +1454,13 @@ graphrag:
     # GraphRAG Components runtime configuration settings.
     configuration:
       # GraphRAG Components configuration properties to insert as environment variables.
-      # properties: {}
+      properties: {}
 
       # References to existing ConfigMap or Secret resources containing configuration properties that will be included
       # as environment variables.
       existingProperties: []
 
-    # Resource configurations for the Graphrag Components pods.
+    # Resource configurations for the GraphRAG Components pods.
     resources:
       limits:
         memory: 1Gi
@@ -1224,13 +1475,21 @@ graphrag:
 
   # GraphRAG Workflows configuration overrides.
   #
-  # Ref: https://github.com/poolparty-semantic-suite/graphrag-charts/blob/main/charts/graphrag-workflows/values.yaml
+  # Ref: https://github.com/poolparty-semantic-suite/graphwise-workflows-chart/blob/main/values.yaml
   workflows:
     # Toggles the deployment of the GraphRAG Workflows service.
     enabled: true
 
     # Name and name prefix for the GraphRAG Workflows resources.
+    nameOverride: graphrag-workflows
     fullnameOverride: graphrag-workflows
+
+    # License configurations for the GraphRAG Workflows service.
+    license:
+      existingSecret: graphwise-workflows-license
+      licenseKey: LICENSE_KEY
+      # Update to your actual tenant identifier
+      tenantId: 1
 
     # GraphRAG Workflows runtime configuration settings.
     configuration:
@@ -1241,12 +1500,6 @@ graphrag:
       encryption:
         existingSecret: graphrag-workflows-encryption
 
-      # License configurations for the GraphRAG Workflows service.
-      license:
-        existingSecret: graphwise-workflows-license
-        # Update to your actual tenant identifier
-        tenantId: 1
-
       # Database configurations for the GraphRAG Workflows service.
       postgresdb:
         host: graphrag-workflows-postgres-rw
@@ -1255,6 +1508,18 @@ graphrag:
           existingSecret: graphrag-workflows-postgres-app
           usernameKey: username
           passwordKey: password
+
+    # Configurations for the bootstrap job that initializes the Workflows service with a baseline of workflows and other
+    # configurations.
+    # Note: This is a Kubernetes Job wrapped as a Helm hook that runs after the initial deployment.
+    bootstrap:
+      # Toggles the bootstrap Job deployment.
+      enabled: true
+
+      # Helm hook configurations.
+      hook:
+        annotations:
+          helm.sh/hook: post-install, post-upgrade
 
     # Ingress configuration for the GraphRAG Workflows service.
     #
@@ -1270,9 +1535,10 @@ graphrag:
       className: ""
       annotations: {}
 
-    # Persistence configurations for Graphrag Workflows.
+    # Persistence configurations for GraphRAG Workflows.
+    # Disabled by default.
     persistence:
-      enabled: true
+      enabled: false
       volumeClaim:
         spec:
           # You can pass an explicit storage class name here or rely on the default storage class in your Kubernetes cluster.
@@ -1283,7 +1549,7 @@ graphrag:
             requests:
               storage: 2Gi
 
-    # Resource configurations for the Graphrag Workflows pods.
+    # Resource configurations for the GraphRAG Workflows pods.
     resources:
       limits:
         memory: 1Gi
@@ -1370,7 +1636,7 @@ graphrag:
     storage:
       # Explicit storage class to use for the PostgreSQL database cluster.
       # Leave empty to use the default storage class in your Kubernetes cluster.
-      storageClassName:
+      storageClassName: ""
       size: 10Gi
 
     # Resource configurations for the PostgreSQL pods.
