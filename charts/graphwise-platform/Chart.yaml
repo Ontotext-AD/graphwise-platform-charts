@@ -41,7 +41,7 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/charts
   # Graph Modeling 10.3.2
   - name: poolparty
-    version: 1.0.0
+    version: 1.0.1
     repository: https://poolparty-semantic-suite.github.io/charts
     alias: graph-modeling
     condition: graph-modeling.enabled
@@ -49,7 +49,7 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/charts
   # ADF 1.9.0
   - name: adf
-    version: 1.0.0
+    version: 1.0.1
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: adf.enabled
 
@@ -63,7 +63,7 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/charts
   # Semantic Workbench 2.5.0
   - name: semantic-workbench
-    version: 1.0.0
+    version: 1.0.1
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: semantic-workbench.enabled
 
@@ -78,6 +78,6 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/graphrag-charts
   # GraphRAG 1.3.0
   - name: graphrag
-    version: 2.0.0
+    version: 2.0.1
     repository: https://poolparty-semantic-suite.github.io/graphrag-charts
     condition: graphrag.enabled
