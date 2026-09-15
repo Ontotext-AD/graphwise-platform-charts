@@ -85,6 +85,7 @@ spec:
             env:
               - name: KC_HEALTH_ENABLED
                 value: "true"
+              # Administrator credentials
               - name: KEYCLOAK_ADMIN
                 valueFrom:
                   secretKeyRef:
@@ -95,16 +96,43 @@ spec:
                   secretKeyRef:
                     name: {{ .Values.keycloak.configuration.adminSecret.name }}
                     key: {{ .Values.keycloak.configuration.adminSecret.adminPasswordKey }}
+              # Graph Modeling administrator credentials
               - name: POOLPARTY_SUPER_ADMIN_PASSWORD
                 valueFrom:
                   secretKeyRef:
                     name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
                     key: {{ .Values.keycloak.configuration.graphModelingSecret.adminPasswordKey }}
-              - name: POOLPARTY_KEYCLOAK_LOGIN_CLIENTSECRET
+              # Graph Modeling client credentials
+              - name: PPT_KEYCLOAK_LOGIN_CLIENTSECRET
                 valueFrom:
                   secretKeyRef:
                     name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
-                    key: {{ .Values.keycloak.configuration.graphModelingSecret.clientSecretKey }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.taxonomyClientSecretKey }}
+              - name: EXTRACTOR_KEYCLOAK_LOGIN_CLIENTSECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.extractorClientSecretKey }}
+              - name: PPGS_KEYCLOAK_LOGIN_CLIENTSECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.graphSearchClientSecretKey }}
+              - name: RECOMMENDER_KEYCLOAK_LOGIN_CLIENTSECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ .Values.keycloak.configuration.graphModelingSecret.name }}
+                    key: {{ .Values.keycloak.configuration.graphModelingSecret.recommenderClientSecretKey }}
+              # GraphDB
+              - name: GRAPHDB_PUBLIC_URL
+                value: {{ include "graphwise-platform.graphdb.url" . }}
+              # Extra configurations for Keycloak
+              {{- range $key, $val := .Values.keycloak.configuration.properties -}}
+                {{- if ne $val nil }}
+              - name: {{ $key }}
+                value: {{ tpl ($val | toString) $ | quote }}
+                {{- end }}
+              {{- end -}}
               {{- with .Values.keycloak.env }}
                 {{- tpl (toYaml .) $ | nindent 14 }}
               {{- end }}
