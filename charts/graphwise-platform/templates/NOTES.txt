@@ -91,6 +91,16 @@ Semantic Workbench is disabled
 {{- end }}
 {{ "" }}
 
+{{- if (index .Values "mirror-app").enabled }}
+Mirror App is enabled
+  url = {{ tpl (index .Values "mirror-app").configuration.externalUrl . }}/ui
+  image = {{ include "mirror-app.image" (index .Subcharts "mirror-app") }}
+  replicas = 1
+{{- else }}
+Mirror App is disabled
+{{- end }}
+{{ "" }}
+
 {{- if .Values.automation.enabled }}
 {{- if .Values.automation.workflows.enabled }}
 Graph Automation Workflows are enabled

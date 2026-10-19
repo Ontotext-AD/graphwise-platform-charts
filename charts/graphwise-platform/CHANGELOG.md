@@ -2,6 +2,14 @@
 
 Changelog for the Graphwise Platform Helm chart.
 
+## 0.4.0
+
+### New
+
+- Included [Mirror App Helm chart](https://github.com/poolparty-semantic-suite/charts) as part of
+  the Graphwise Platform deployment. It is disabled by default, so you have to enable it. You can configure it with the
+  `mirror-app` configuration section.
+
 ## 0.3.0
 
 ### Breaking

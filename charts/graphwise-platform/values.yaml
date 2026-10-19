@@ -1069,6 +1069,65 @@ semantic-workbench:
     limits:
       memory: 2Gi
 
+# Mirror App configuration overrides.
+#
+# Mirror App is an addon for the Graph Modeling service.
+#
+# Important: You need to prepare and provide a server configuration file "Server-map.json" for the Mirror App to be
+# able to use it. Please refer to our official documentation for more details.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+mirror-app:
+  # Toggles the deployment of the Mirror App service.
+  enabled: false
+
+  # Overrides the default name of the Mirror App service for easier referencing in the rest of the services.
+  fullnameOverride: mirror-app
+
+  # Mirror App configuration settings.
+  configuration:
+    # The external URL at which Mirror App should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/PoolParty/mirror'
+
+    # Additional Mirror App configurations that will be appended to mirror-app.properties.
+    properties:
+      PORT: 8080
+
+    # Provisioning of an external Server-map.json file.
+    existingServerMap:
+      # Reference to an existing Secret resource containing the Server-map.json configuration.
+      secret: ""
+      # Key in the existing Secret resource that holds the content of the Server-map.json configuration.
+      secretKey: Server-map.json
+      # The path where the Server-map.json configuration will be mounted.
+      mountPath: path/to/Server-map.json
+
+    # Gunicorn arguments to apply on application startup.
+    gunicornArguments: ""
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  service:
+    ports:
+      http: 8080
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the Mirror App pod.
+  resources:
+    requests:
+      memory: 256Mi
+    limits:
+      memory: 256Mi
+
 ########################################################################################################################
 # GRAPHWISE PLATFORM - GRAPH AUTOMATION SERVICES
 ########################################################################################################################
