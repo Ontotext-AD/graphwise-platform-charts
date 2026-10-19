@@ -20,6 +20,15 @@ spec:
     initdb:
       database: {{ .Values.automation.workflows_postgres.database.name }}
       owner: {{ .Values.automation.workflows_postgres.database.owner }}
+  managed:
+    roles:
+      # TODO: test it
+      {{- if .Values.automation.chunkers_database.enabled }}
+      - name: {{ .Values.automation.chunkers_database.owner }}
+        ensure: present
+        login: true
+        superuser: false
+      {{- end }}
   {{- with .Values.automation.workflows_postgres.postgresql }}
   postgresql:
     {{- toYaml . | nindent 4 }}

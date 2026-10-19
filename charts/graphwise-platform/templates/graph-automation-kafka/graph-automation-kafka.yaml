@@ -1,0 +1,42 @@
+{{- if and .Values.automation.enabled .Values.automation.kafka.enabled }}
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: {{ .Values.automation.kafka.clusterName }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  kafka:
+    version: {{ .Values.automation.kafka.version }}
+    metadataVersion: {{ .Values.automation.kafka.metadataVersion }}
+    listeners:
+      {{- if .Values.automation.kafka.listeners.plain.enabled }}
+      - name: plain
+        port: {{ .Values.automation.kafka.listeners.plain.port }}
+        type: internal
+        tls: false
+        authentication:
+          type: {{ .Values.automation.kafka.authentication.type }}
+      {{- end }}
+      {{- if .Values.automation.kafka.listeners.tls.enabled }}
+      - name: tls
+        port: {{ .Values.automation.kafka.listeners.tls.port }}
+        type: internal
+        tls: true
+        authentication:
+          type: {{ .Values.automation.kafka.authentication.type }}
+      {{- end }}
+    authorization:
+      type: {{ .Values.automation.kafka.authorization.type }}
+    {{- with .Values.automation.kafka.configuration }}
+    config:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+{{- end }}

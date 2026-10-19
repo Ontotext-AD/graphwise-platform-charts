@@ -1,0 +1,78 @@
+{{- if and .Values.automation.enabled .Values.automation.kafka.enabled }}
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: {{ .Values.automation.kafka.nodePoolName }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.automation.kafka.replicas }}
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: {{ .Values.automation.kafka.persistence.size }}
+        {{- if .Values.automation.kafka.persistence.class }}
+        class: {{ .Values.automation.kafka.persistence.class }}
+        {{- end }}
+        kraftMetadata: shared
+        deleteClaim: {{ .Values.automation.kafka.persistence.deleteClaim }}
+      {{- with .Values.automation.kafka.persistence.extraVolumes }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+  {{- with .Values.automation.kafka.jvmOptions }}
+  jvmOptions:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+  {{- with .Values.automation.kafka.resources }}
+  resources:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+  template:
+    pod:
+      {{- if and .Values.automation.kafka.nodeSelector (not .Values.automation.kafka.affinity) }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                {{- range $key, $value := .Values.automation.kafka.nodeSelector }}
+                  - key: {{ $key }}
+                    operator: In
+                    values:
+                      - {{ $value }}
+                {{- end }}
+      {{- end }}
+      {{- with .Values.automation.kafka.affinity }}
+      affinity:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- if and (gt (int .Values.automation.kafka.replicas) 1) (not .Values.automation.kafka.topologySpreadConstraints) }}
+      topologySpreadConstraints:
+        - topologyKey: topology.kubernetes.io/zone
+          maxSkew: 1
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+        - topologyKey: kubernetes.io/hostname
+          maxSkew: 1
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+      {{- end }}
+      {{- with .Values.automation.kafka.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+{{- end }}

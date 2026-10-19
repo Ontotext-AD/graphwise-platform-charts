@@ -1,0 +1,21 @@
+{{- if and .Values.automation.enabled .Values.automation.nfs.enabled }}
+{{- range $key, $pvc := .Values.automation.nfs.volumeClaims }}
+{{- if $pvc.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvc.name }}
+  {{- with (mergeOverwrite (deepCopy $.Values.labels) $pvc.labels) }}
+  labels:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- with (mergeOverwrite (deepCopy $.Values.annotations) $pvc.annotations) }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  {{- toYaml $pvc.spec | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

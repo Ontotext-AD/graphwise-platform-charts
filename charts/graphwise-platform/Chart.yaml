@@ -75,9 +75,9 @@ dependencies:
     condition: mirror-app.enabled
 
   # https://github.com/poolparty-semantic-suite/graph-automation-charts
-  # Graph Automation 1.0.0-M1
+  # Graph Automation 1.0.0-RC1
   - name: graphwise-graph-automation
-    version: 0.1.0
+    version: 0.2.0
     repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
     condition: automation.enabled
     alias: automation

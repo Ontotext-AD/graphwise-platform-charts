@@ -1,0 +1,7 @@
+# Ref: https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
+
+fullnameOverride: nfs-ganesha-server
+
+persistence:
+  enabled: true
+  size: 20Gi

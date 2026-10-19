@@ -1,0 +1,76 @@
+{{- if and .Values.automation.enabled .Values.automation.kafka.enabled }}
+{{- if .Values.automation.morphkgc.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ printf "%s-morphkgc-kafka-user" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  authentication:
+    type: {{ .Values.automation.kafka.authentication.type }}
+  authorization:
+    type: {{ .Values.automation.kafka.authorization.type }}
+    acls:
+      # TODO read from subchart
+      - resource:
+          type: topic
+          name: graph-automation.morphkgc
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: graph-automation.morphkgc
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+{{- end }}
+{{- if or .Values.automation.chunkerStore.enabled .Values.automation.chunkerParse.enabled  .Values.automation.chunkerSectioning.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ printf "%s-chunker-kafka-user" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  authentication:
+    type: {{ .Values.automation.kafka.authentication.type }}
+  authorization:
+    type: {{ .Values.automation.kafka.authorization.type }}
+    acls:
+      # TODO read from subchart
+      - resource:
+          type: topic
+          name: graph-automation.chunker
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: graph-automation.chunker
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+{{- end }}
+{{- end }}

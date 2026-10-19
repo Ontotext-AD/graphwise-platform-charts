@@ -9,6 +9,21 @@ Changelog for the Graphwise Platform Helm chart.
 - Included [Mirror App Helm chart](https://github.com/poolparty-semantic-suite/charts) as part of
   the Graphwise Platform deployment. It is disabled by default, so you have to enable it. You can configure it with the
   `mirror-app` configuration section.
+- Added deployment of a Kafka cluster for the Graph Automation services, managed by the Strimzi operator, see
+  `automation.kafka` for configurations and details.
+- Added deployment of NFS-backed PVCs for the Graph Automation services, see `automation.nfs` for more details.
+- Added a new CNPG `Database` in the Graph Automation PostgreSQL cluster that is used by the new Graph Automation Kafka
+  worker services
+
+### Updated
+
+- Updated the Graph Automation Helm chart to version 0.2.0 bringing Graph Automation 1.0.0-RC1 and the new Kafka worker
+  services:
+  - Morph-KGC
+  - Document Chunker API
+  - Document Chunker Store
+  - Document Chunker Parse
+  - Document Chunker Sectioning
 
 ## 0.3.0
 
@@ -21,7 +36,7 @@ migration and upgrade guidelines.
   Workflows Helm chart. See
   the [Upgrade guide](https://github.com/poolparty-semantic-suite/graphrag-charts/blob/graphrag-2.0.1/charts/graphrag/UPGRADE.md#200)
   for more details.
-- Configured `graphrag.workflows.name` so you need to re-create the Deplyoment resource if GraphRAG has been enabled.
+- Configured `graphrag.workflows.name` so you need to re-create the Deployment resource if GraphRAG has been enabled.
 - Upgraded Graph Modeling to version 10.3.2 (chart 1.0.1), check the following upgrade guides:
   - Graph Modeling Helm chart
     1.0.1 [UPGRADE.md](https://github.com/poolparty-semantic-suite/charts/blob/poolparty-1.0.1/poolparty/UPGRADE.md)

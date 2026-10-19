@@ -1,0 +1,105 @@
+{{- if and .Values.automation.enabled .Values.automation.kafka.enabled }}
+{{- if .Values.automation.morphkgc.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s-morphkgc-jobs" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  # TODO read from subchart
+  topicName: graph-automation.morphkgc.jobs
+  partitions: 8
+  replicas: 1
+  config:
+    retention.ms: 86400000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s-morphkgc-results" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  # TODO read from subchart
+  topicName: graph-automation.morphkgc.results
+  partitions: 8
+  replicas: 1
+  config:
+    retention.ms: 86400000
+{{- end }}
+{{- if .Values.automation.chunkerStore.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s-chunker-store" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  # TODO read from subchart
+  topicName: graph-automation.chunker.store
+  partitions: 2
+  replicas: 1
+  config:
+    retention.ms: 86400000
+{{- end }}
+{{- if .Values.automation.chunkerParse.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s-chunker-parse" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  # TODO read from subchart
+  topicName: graph-automation.chunker.parse
+  partitions: 2
+  replicas: 1
+  config:
+    retention.ms: 86400000
+{{- end }}
+{{- if .Values.automation.chunkerSectioning.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s-chunker-sectioning" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  # TODO read from subchart
+  topicName: graph-automation.chunker.sectioning
+  partitions: 2
+  replicas: 1
+  config:
+    retention.ms: 86400000
+{{- end }}
+{{- end }}

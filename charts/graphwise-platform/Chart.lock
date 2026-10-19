@@ -22,9 +22,9 @@ dependencies:
   version: 1.1.0
 - name: graphwise-graph-automation
   repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
-  version: 0.1.0
+  version: 0.2.0
 - name: graphrag
   repository: https://poolparty-semantic-suite.github.io/graphrag-charts
   version: 2.0.1
-digest: sha256:6ea708f4c26ba30842f9dd3fc1ad993b72e3f0791fb20113bad75b148e76548a
-generated: "2026-09-30T09:30:01.929199118+03:00"
+digest: sha256:40f0ffc19ac8da6bff935543f2cf588074793b0967bd0df0b135bf67d17b4e1d
+generated: "2026-10-19T15:55:33.889580465+03:00"

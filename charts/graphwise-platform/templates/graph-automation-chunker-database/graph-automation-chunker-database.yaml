@@ -1,0 +1,18 @@
+{{- if and .Values.automation.enabled .Values.automation.workflows_postgres.enabled .Values.automation.chunkers_database.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ .Values.automation.chunkers_database.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  name: {{ .Values.automation.chunkers_database.name }}
+  owner: {{ .Values.automation.chunkers_database.owner }}
+  cluster:
+    name: {{ .Values.automation.workflows_postgres.name }}
+  databaseReclaimPolicy: retain
+{{- end }}
