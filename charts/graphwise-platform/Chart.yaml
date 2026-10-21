@@ -31,17 +31,17 @@ dependencies:
     condition: elasticsearch_snapshots.enabled
 
   # https://github.com/Ontotext-AD/graphdb-helm
-  # GraphDB 11.5.0
+  # GraphDB 11.5.2
   - name: graphdb
-    version: 12.5.0
+    version: 12.6.3
     repository: https://maven.ontotext.com/repository/helm-public/
     condition: graphdb.enabled
 
   # Graph Modeling fka PoolParty
   # https://github.com/poolparty-semantic-suite/charts
-  # Graph Modeling 10.3.2
+  # Graph Modeling 10.3.3
   - name: poolparty
-    version: 1.0.1
+    version: 1.1.1
     repository: https://poolparty-semantic-suite.github.io/charts
     alias: graph-modeling
     condition: graph-modeling.enabled
@@ -49,7 +49,7 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/charts
   # ADF 1.9.0
   - name: adf
-    version: 1.0.1
+    version: 1.1.0
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: adf.enabled
 
@@ -63,7 +63,7 @@ dependencies:
   # https://github.com/poolparty-semantic-suite/charts
   # Semantic Workbench 2.5.0
   - name: semantic-workbench
-    version: 1.0.1
+    version: 1.1.0
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: semantic-workbench.enabled
 

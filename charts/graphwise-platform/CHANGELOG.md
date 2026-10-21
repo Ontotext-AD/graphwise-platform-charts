@@ -10,6 +10,15 @@ Changelog for the Graphwise Platform Helm chart.
   the Graphwise Platform deployment. It is disabled by default, so you have to enable it. You can configure it with the
   `mirror-app` configuration section.
 
+### Updated
+
+- Updated Elasticsearch to version 9.4.8 (`ontotext/poolparty-elasticsearch:9.4.8`)
+- Updated Keycloak to version 2.6.2 (`ontotext/poolparty-keycloak:2.6.2`)
+- Updated GraphDB to version 11.5.2 with chart 12.6.3
+- Updated Graph Modeling to version 10.3.3 with chart 1.1.1
+- Updated ADF chart version to 1.1.0
+- Updated Semantic Workbench chart version 1.1.0
+
 ## 0.3.0
 
 ### Breaking

@@ -111,7 +111,7 @@ elasticsearch:
   image:
     registry: docker.io
     repository: ontotext/poolparty-elasticsearch
-    tag: 9.4.5
+    tag: 9.4.8
     digest: ""
 
   # Number of Elasticsearch nodes to deploy in the cluster.
@@ -266,7 +266,7 @@ keycloak:
   image:
     registry: docker.io
     repository: ontotext/poolparty-keycloak
-    tag: 2.6.1
+    tag: 2.6.2
     digest: ""
 
   # Number of Keycloak instances to deploy.
