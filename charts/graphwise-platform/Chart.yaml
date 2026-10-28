@@ -68,9 +68,9 @@ dependencies:
     condition: semantic-workbench.enabled
 
   # https://github.com/poolparty-semantic-suite/charts
-  # MirrorApp 2.5.0
+  # MirrorApp 2.7.0
   - name: mirror-app
-    version: 1.1.0
+    version: 1.2.0
     repository: https://poolparty-semantic-suite.github.io/charts
     condition: mirror-app.enabled
 
