@@ -19,12 +19,12 @@ dependencies:
   version: 1.1.0
 - name: mirror-app
   repository: https://poolparty-semantic-suite.github.io/charts
-  version: 1.1.0
+  version: 1.2.0
 - name: graphwise-graph-automation
   repository: https://poolparty-semantic-suite.github.io/graph-automation-charts
   version: 0.1.0
 - name: graphrag
   repository: https://poolparty-semantic-suite.github.io/graphrag-charts
   version: 2.0.1
-digest: sha256:e9910a9ef6dac6941e1d49a1d2ec17d2a6f59059d627f69db5b98693e1e76af1
-generated: "2026-10-21T11:49:30.298894763+03:00"
+digest: sha256:1478b246bdff375a6e31d663c130443bff8a159bf135a7b5546f3b789c6fb026
+generated: "2026-10-28T16:07:53.800588421+02:00"
