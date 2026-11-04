@@ -1,0 +1,26 @@
+{{- if and .Values.automation.enabled .Values.automation.postgres.enabled }}
+{{- range $key, $role := .Values.automation.postgres.roles }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: {{ $role.name }}
+  labels:
+    {{- include "graphwise-platform.labels" $ | nindent 4 }}
+  {{- with $.Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  cluster:
+    name: {{ $.Values.automation.postgres.name }}
+  name: {{ $role.name }}
+  login: true
+  superuser: false
+  createdb: false
+  createrole: false
+  passwordSecret:
+    name: {{ $role.passwordSecret.name }}
+  databaseRoleReclaimPolicy: {{ $role.databaseRoleReclaimPolicy }}
+{{- end }}
+{{- end }}

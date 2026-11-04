@@ -1,0 +1,9 @@
+# Ref: https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
+
+fullnameOverride: nfs-server
+
+# Suitable for development and testing. For production, prefer an enterprise grade NFS provider like AWS NFS or
+# Azure Storage.
+persistence:
+  enabled: true
+  size: 20Gi
