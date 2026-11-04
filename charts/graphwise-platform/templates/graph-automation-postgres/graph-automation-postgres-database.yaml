@@ -1,0 +1,21 @@
+{{- if and .Values.automation.enabled .Values.automation.postgres.enabled }}
+{{- range $key, $database := .Values.automation.postgres.databases }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ $database.name }}
+  labels:
+    {{- include "graphwise-platform.labels" $ | nindent 4 }}
+  {{- with $.Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  name: {{ $database.name }}
+  owner: {{ $database.owner }}
+  cluster:
+    name: {{ $.Values.automation.postgres.name }}
+  databaseReclaimPolicy: {{ $database.databaseReclaimPolicy }}
+{{- end }}
+{{- end }}

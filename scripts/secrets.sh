@@ -25,6 +25,9 @@ export GRAPH_MODELING_ADMIN_CREDENTIALS_SECRET_NAME="graph-modeling-admin-creden
 
 export GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME="graph-automation-workflows-encryption"
 export GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME="graph-automation-workflows-task-runners-token"
+export GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-workflows-postgres-password"
+export GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-ingestion-postgres-password"
+export GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-chunker-postgres-password"
 
 export GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME="graphrag-conversation-database-credentials"
 export GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME="graphrag-conversation-keycloak-secrets"
@@ -121,6 +124,15 @@ cleanup_secrets() {
   fi
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}; then
     kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME}
+  fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}
   fi
   # GraphRAG
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
@@ -331,6 +343,54 @@ EOF
   else
     kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME} \
             --from-literal=N8N_RUNNERS_AUTH_TOKEN="${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN}"
+  fi
+
+  #
+  # Graph Automation Workflows PostgreSQL credentials
+  #
+  GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME} \
+            --type=kubernetes.io/basic-auth \
+            --from-literal=username="graph-automation-workflows" \
+            --from-literal=password="${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD}"
+    kubectl --namespace ${PLATFORM_NAMESPACE} label secret ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME} \
+            cnpg.io/reload=true
+  fi
+
+  #
+  # Graph Automation Ingestion PostgreSQL credentials
+  #
+  GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME} \
+            --type=kubernetes.io/basic-auth \
+            --from-literal=username="graph-automation-ingestion" \
+            --from-literal=password="${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD}"
+    kubectl --namespace ${PLATFORM_NAMESPACE} label secret ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME} \
+            cnpg.io/reload=true
+  fi
+
+  #
+  # Graph Automation Chunker PostgreSQL credentials
+  #
+  GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME} \
+            --type=kubernetes.io/basic-auth \
+            --from-literal=username="graph-automation-chunker" \
+            --from-literal=password="${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD}"
+    kubectl --namespace ${PLATFORM_NAMESPACE} label secret ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME} \
+            cnpg.io/reload=true
   fi
 
   #

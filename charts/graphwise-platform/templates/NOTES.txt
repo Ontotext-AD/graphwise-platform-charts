@@ -7,14 +7,14 @@
   \_____|_|  \_\/_/    \_\_|    |_|  |_|   \/  \/   |_____|_____/|______|    |_|    |______/_/    \_\_|  |_|    \____/|_|  \_\_|  |_|
 --------------------------------------------------------------------------------------------------------------------------------------
 
-Chart version = {{ .Chart.Version }}
+Chart version: {{ .Chart.Version }}
 {{ "" }}
 
 {{- if .Values.elasticsearch.enabled }}
 Elasticsearch is enabled
-  image = {{ include "graphwise-platform.elastic.image" . }}
-  replicas = {{ .Values.elasticsearch.replicas }}
-  snapshots = {{ .Values.elasticsearch_snapshots.enabled }}
+  image: {{ include "graphwise-platform.elastic.image" . }}
+  replicas: {{ .Values.elasticsearch.replicas }}
+  snapshots: {{ .Values.elasticsearch_snapshots.enabled }}
 {{- else }}
 Elasticsearch is disabled
 {{- end }}
@@ -22,9 +22,9 @@ Elasticsearch is disabled
 
 {{- if .Values.keycloak.enabled }}
 Keycloak is enabled
-  url = {{ include "graphwise-platform.keycloak.url" . }}
-  image = {{ include "graphwise-platform.keycloak.image" . }}
-  replicas = {{ .Values.keycloak.replicas }}
+  url: {{ include "graphwise-platform.keycloak.url" . }}
+  image: {{ include "graphwise-platform.keycloak.image" . }}
+  replicas: {{ .Values.keycloak.replicas }}
 {{- else }}
 Keycloak is disabled
 {{- end }}
@@ -32,9 +32,9 @@ Keycloak is disabled
 
 {{- if .Values.keycloak_postgres.enabled }}
 Keycloak PostgreSQL is enabled
-  image = {{ include "graphwise-platform.keycloak_postgres.image" . }}
-  replicas = {{ .Values.keycloak_postgres.replicas }}
-  backups = {{ .Values.keycloak_postgres.backups.enabled }}
+  image: {{ include "graphwise-platform.keycloak_postgres.image" . }}
+  replicas: {{ .Values.keycloak_postgres.replicas }}
+  backups: {{ .Values.keycloak_postgres.backups.enabled }}
 {{- else }}
 Keycloak PostgreSQL is disabled
 {{- end }}
@@ -42,10 +42,10 @@ Keycloak PostgreSQL is disabled
 
 {{- if .Values.graphdb.enabled }}
 GraphDB is enabled
-  url = {{ include "graphwise-platform.graphdb.url" . }}
-  image = {{ include "graphdb.image" .Subcharts.graphdb }}
-  replicas = {{ .Values.graphdb.replicas }}
-  backups = {{ .Values.graphdb.backup.enabled }}
+  url: {{ include "graphwise-platform.graphdb.url" . }}
+  image: {{ include "graphdb.image" .Subcharts.graphdb }}
+  replicas: {{ .Values.graphdb.replicas }}
+  backups: {{ .Values.graphdb.backup.enabled }}
 {{- else }}
 GraphDB is disabled
 {{- end }}
@@ -53,9 +53,9 @@ GraphDB is disabled
 
 {{- if (index .Values "graph-modeling").enabled }}
 Graph Modeling is enabled
-  url = {{ include "graphwise-platform.graph-modeling.url" . }}/PoolParty
-  image = {{ include "poolparty.image" (index .Subcharts "graph-modeling") }}
-  replicas = 1
+  url: {{ include "graphwise-platform.graph-modeling.url" . }}/PoolParty
+  image: {{ include "poolparty.image" (index .Subcharts "graph-modeling") }}
+  replicas: 1
 {{- else }}
 Graph Modeling is disabled
 {{- end }}
@@ -63,9 +63,9 @@ Graph Modeling is disabled
 
 {{- if .Values.adf.enabled }}
 ADF is enabled
-  url = {{ tpl .Values.adf.configuration.externalUrl . }}
-  image = {{ include "adf.image" .Subcharts.adf }}
-  replicas = 1
+  url: {{ tpl .Values.adf.configuration.externalUrl . }}
+  image: {{ include "adf.image" .Subcharts.adf }}
+  replicas: 1
 {{- else }}
 ADF is disabled
 {{- end }}
@@ -73,9 +73,9 @@ ADF is disabled
 
 {{- if .Values.graphviews.enabled }}
 GraphViews is enabled
-  url = {{ tpl .Values.graphviews.configuration.externalUrl . }}
-  image = {{ include "graphviews.image" .Subcharts.graphviews }}
-  replicas = 1
+  url: {{ tpl .Values.graphviews.configuration.externalUrl . }}
+  image: {{ include "graphviews.image" .Subcharts.graphviews }}
+  replicas: 1
 {{- else }}
 GraphViews is disabled
 {{- end }}
@@ -83,9 +83,9 @@ GraphViews is disabled
 
 {{- if (index .Values "semantic-workbench").enabled }}
 Semantic Workbench is enabled
-  url = {{ tpl (index .Values "semantic-workbench").configuration.externalUrl . }}
-  image = {{ include "semantic-workbench.image" (index .Subcharts "semantic-workbench") }}
-  replicas = 1
+  url: {{ tpl (index .Values "semantic-workbench").configuration.externalUrl . }}
+  image: {{ include "semantic-workbench.image" (index .Subcharts "semantic-workbench") }}
+  replicas: 1
 {{- else }}
 Semantic Workbench is disabled
 {{- end }}
@@ -93,9 +93,9 @@ Semantic Workbench is disabled
 
 {{- if (index .Values "mirror-app").enabled }}
 Mirror App is enabled
-  url = {{ tpl (index .Values "mirror-app").configuration.externalUrl . }}/ui
-  image = {{ include "mirror-app.image" (index .Subcharts "mirror-app") }}
-  replicas = 1
+  url: {{ tpl (index .Values "mirror-app").configuration.externalUrl . }}/ui
+  image: {{ include "mirror-app.image" (index .Subcharts "mirror-app") }}
+  replicas: 1
 {{- else }}
 Mirror App is disabled
 {{- end }}
@@ -104,25 +104,79 @@ Mirror App is disabled
 {{- if .Values.automation.enabled }}
 {{- if .Values.automation.workflows.enabled }}
 Graph Automation Workflows are enabled
-  url = {{ tpl .Values.automation.workflows.configuration.externalUrl . }}
-  image = {{ include "graphwise-workflows.image" .Subcharts.automation.Subcharts.workflows }}
-  replicas = {{ .Values.automation.workflows.replicas }}
-  bootstrap = {{ ternary "enabled" "disabled" .Values.automation.workflows.bootstrap.enabled }}
+  url: {{ tpl .Values.automation.workflows.configuration.externalUrl . }}
+  image: {{ include "graphwise-workflows.image" .Subcharts.automation.Subcharts.workflows }}
+  replicas: {{ .Values.automation.workflows.replicas }}
+  bootstrap: {{ ternary "enabled" "disabled" .Values.automation.workflows.bootstrap.enabled }}
     {{- if.Values.automation.workflows.bootstrap.enabled }}
-    image = {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.automation.Subcharts.workflows }}
+    image: {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.automation.Subcharts.workflows }}
     {{- end }}
 {{- else }}
 Graph Automation Workflows are disabled
 {{- end }}
 {{ "" }}
 
-{{- if .Values.automation.workflows_postgres.enabled }}
-Graph Automation Workflows PostgreSQL is enabled
-  image = {{ include "graphwise-platform.graph-automation.workflows_postgres.image" . }}
-  replicas = {{ .Values.automation.workflows_postgres.replicas }}
-  backups = {{ .Values.automation.workflows_postgres.backups.enabled }}
+{{- if .Values.automation.postgres.enabled }}
+Graph Automation PostgreSQL is enabled
+  image: {{ include "graphwise-platform.graph-automation.postgres.image" . }}
+  replicas: {{ .Values.automation.postgres.replicas }}
+  backups: {{ .Values.automation.postgres.backups.enabled }}
 {{- else }}
-Graph Automation Workflows PostgreSQL is disabled
+Graph Automation PostgreSQL is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.kafka.enabled }}
+Graph Automation Kafka is enabled
+  version: {{ .Values.automation.kafka.version }}
+  replicas: {{ .Values.automation.kafka.replicas }}
+{{- else }}
+Graph Automation Kafka is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.kafka.enabled }}
+Graph Automation MorphKGC Kafka worker is enabled
+  image: {{ include "graphwise-graph-automation-morphkgc-worker.image" .Subcharts.automation.Subcharts.morphkgc }}
+  replicas: {{ .Values.automation.morphkgc.replicas }}
+{{- else }}
+Graph Automation MorphKGC Kafka worker is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.chunkerAPI.enabled }}
+Graph Automation Document Chunker API is enabled
+  image: {{ include "graphwise-graph-automation-chunker.image" .Subcharts.automation.Subcharts.chunkerAPI }}
+  replicas: {{ .Values.automation.chunkerAPI.replicas }}
+{{- else }}
+Graph Automation Document Chunker API is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.chunkerStore.enabled }}
+Graph Automation Document Chunker Store is enabled
+  image: {{ include "graphwise-graph-automation-chunker.image" .Subcharts.automation.Subcharts.chunkerStore }}
+  replicas: {{ .Values.automation.chunkerStore.replicas }}
+{{- else }}
+Graph Automation Document Chunker Store is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.chunkerStore.enabled }}
+Graph Automation Document Chunker Parse is enabled
+  image: {{ include "graphwise-graph-automation-chunker.image" .Subcharts.automation.Subcharts.chunkerParse }}
+  replicas: {{ .Values.automation.chunkerParse.replicas }}
+{{- else }}
+Graph Automation Document Chunker Parse is disabled
+{{- end }}
+{{ "" }}
+
+{{- if .Values.automation.chunkerSectioning.enabled }}
+Graph Automation Document Chunker Sectioning is enabled
+  image: {{ include "graphwise-graph-automation-chunker.image" .Subcharts.automation.Subcharts.chunkerSectioning }}
+  replicas: {{ .Values.automation.chunkerSectioning.replicas }}
+{{- else }}
+Graph Automation Document Chunker Sectioning is disabled
 {{- end }}
 {{- else }}
 Graph Automation is disabled
@@ -132,9 +186,9 @@ Graph Automation is disabled
 {{- if .Values.graphrag.enabled }}
 {{- if .Values.graphrag.chatbot.enabled }}
 GraphRAG Chatbot is enabled
-  url = {{ tpl .Values.graphrag.chatbot.configuration.externalUrl . }}
-  image = {{ include "graphrag-chatbot.image" .Subcharts.graphrag.Subcharts.chatbot }}
-  replicas = {{ .Values.graphrag.chatbot.replicas }}
+  url: {{ tpl .Values.graphrag.chatbot.configuration.externalUrl . }}
+  image: {{ include "graphrag-chatbot.image" .Subcharts.graphrag.Subcharts.chatbot }}
+  replicas: {{ .Values.graphrag.chatbot.replicas }}
 {{- else }}
 GraphRAG Chatbot is disabled
 {{- end }}
@@ -142,8 +196,8 @@ GraphRAG Chatbot is disabled
 
 {{- if .Values.graphrag.conversation.enabled }}
 GraphRAG Conversation is enabled
-  image = {{ include "graphrag-conversation.image" .Subcharts.graphrag.Subcharts.conversation }}
-  replicas = {{ .Values.graphrag.conversation.replicas }}
+  image: {{ include "graphrag-conversation.image" .Subcharts.graphrag.Subcharts.conversation }}
+  replicas: {{ .Values.graphrag.conversation.replicas }}
 {{- else }}
 GraphRAG Conversation is disabled
 {{- end }}
@@ -151,8 +205,8 @@ GraphRAG Conversation is disabled
 
 {{- if .Values.graphrag.components.enabled }}
 GraphRAG Components is enabled
-  image = {{ include "graphrag-components.image" .Subcharts.graphrag.Subcharts.components }}
-  replicas = {{ .Values.graphrag.components.replicas }}
+  image: {{ include "graphrag-components.image" .Subcharts.graphrag.Subcharts.components }}
+  replicas: {{ .Values.graphrag.components.replicas }}
 {{- else }}
 GraphRAG Components is disabled
 {{- end }}
@@ -160,12 +214,12 @@ GraphRAG Components is disabled
 
 {{- if .Values.graphrag.workflows.enabled }}
 GraphRAG Workflows are enabled
-  url = {{ tpl .Values.graphrag.workflows.configuration.externalUrl . }}
-  image = {{ include "graphwise-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
-  replicas = {{ .Values.graphrag.workflows.replicas }}
-  bootstrap = {{ ternary "enabled" "disabled" .Values.graphrag.workflows.bootstrap.enabled }}
+  url: {{ tpl .Values.graphrag.workflows.configuration.externalUrl . }}
+  image: {{ include "graphwise-workflows.image" .Subcharts.graphrag.Subcharts.workflows }}
+  replicas: {{ .Values.graphrag.workflows.replicas }}
+  bootstrap: {{ ternary "enabled" "disabled" .Values.graphrag.workflows.bootstrap.enabled }}
     {{- if.Values.graphrag.workflows.bootstrap.enabled }}
-    image = {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.graphrag.Subcharts.workflows }}
+    image: {{ include "graphwise-workflows.bootstrap.job.image" .Subcharts.graphrag.Subcharts.workflows }}
     {{- end }}
 {{- else }}
 GraphRAG Workflows are disabled
@@ -174,9 +228,9 @@ GraphRAG Workflows are disabled
 
 {{- if.Values.graphrag.workflows_postgres.enabled }}
 GraphRAG Workflows PostgreSQL is enabled
-  image = {{ include "graphwise-platform.graphrag.workflows_postgres.image" . }}
-  replicas = {{ .Values.graphrag.workflows_postgres.replicas }}
-  backups = {{ .Values.graphrag.workflows_postgres.backups.enabled }}
+  image: {{ include "graphwise-platform.graphrag.workflows_postgres.image" . }}
+  replicas: {{ .Values.graphrag.workflows_postgres.replicas }}
+  backups: {{ .Values.graphrag.workflows_postgres.backups.enabled }}
 {{- else }}
 GraphRAG Workflows PostgreSQL is disabled
 {{- end }}
