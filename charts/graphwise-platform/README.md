@@ -29,12 +29,20 @@ The following dependencies are required to install the platform:
 3. **Cert Manager** - https://cert-manager.io/docs/installation/
 4. **CNPG Operator** - https://cloudnative-pg.io/docs/1.29/installation_upgrade/
 5. **CNPG Barman Cloud Plugin** - https://cloudnative-pg.io/plugin-barman-cloud/docs/installation/
+6. **Strimzi operator** - https://strimzi.io/docs/operators/latest/deploying
+7. **Strimzi drain cleaner** - https://strimzi.io/docs/operators/latest/deploying#assembly-drain-cleaner-str
+8. **NFS Ganesha server** - https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
 
-You can use or refer to the helper script [controllers.sh](../../scripts/controllers.sh) to install them.
+You can use or refer to the helper script [controllers.sh](../../scripts/controllers.sh) to install them, but you should
+treat it as an example of how to deploy them and the platform.
 
 ```shell
 ../../scripts/controllers.sh
 ```
+
+For production deployment, you should manage all controllers and required databases outside the Helm lifecycle. You can
+also choose to use your own existing databases instead of provisioning fresh ones. Make sure to update all affected
+configuratiosn in `values.yaml`.
 
 ### Licenses
 
@@ -126,7 +134,8 @@ helm upgrade --install --dependency-update --namespace graphwise-platform graphw
 ```
 
 > [!NOTE]
-> If you are using Helm v4, you need to add the `--server-side=false` flag due to https://github.com/elastic/cloud-on-k8s/issues/8975
+> If you are using Helm v4, you need to add the `--server-side=false` flag due
+> to https://github.com/elastic/cloud-on-k8s/issues/8975
 
 ## Uninstall
 

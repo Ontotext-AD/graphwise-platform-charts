@@ -116,11 +116,11 @@ Graph Automation Workflows are disabled
 {{- end }}
 {{ "" }}
 
-{{- if .Values.automation.workflows_postgres.enabled }}
+{{- if .Values.automation.postgres.enabled }}
 Graph Automation Workflows PostgreSQL is enabled
-  image = {{ include "graphwise-platform.graph-automation.workflows_postgres.image" . }}
-  replicas = {{ .Values.automation.workflows_postgres.replicas }}
-  backups = {{ .Values.automation.workflows_postgres.backups.enabled }}
+  image = {{ include "graphwise-platform.graph-automation.postgres.image" . }}
+  replicas = {{ .Values.automation.postgres.replicas }}
+  backups = {{ .Values.automation.postgres.backups.enabled }}
 {{- else }}
 Graph Automation Workflows PostgreSQL is disabled
 {{- end }}
