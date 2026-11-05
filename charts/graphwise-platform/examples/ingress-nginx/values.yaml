@@ -38,6 +38,11 @@ semantic-workbench:
     enabled: true
     className: nginx
 
+mirror-app:
+  ingress:
+    enabled: true
+    className: nginx
+
 automation:
   workflows:
     ingress:

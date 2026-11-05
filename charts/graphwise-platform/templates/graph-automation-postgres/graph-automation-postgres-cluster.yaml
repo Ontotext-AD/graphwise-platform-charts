@@ -1,0 +1,68 @@
+{{- if and .Values.automation.enabled .Values.automation.postgres.enabled }}
+#
+# PostgreSQL cluster for GraphRAG Workflows.
+# See https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/
+#
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.automation.postgres.name }}
+  labels:
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  imageName: {{ include "graphwise-platform.graph-automation.postgres.image" . }}
+  instances: {{ .Values.automation.postgres.replicas }}
+  {{- with .Values.automation.postgres.postgresql }}
+  postgresql:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  storage:
+    {{- if .Values.automation.postgres.storage.storageClassName }}
+    storageClass: {{ .Values.automation.postgres.storage.storageClassName }}
+    {{- end }}
+    size: {{ .Values.automation.postgres.storage.size }}
+  {{- with .Values.automation.postgres.resources }}
+  resources: {{ toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.automation.postgres.serviceAccountTemplate }}
+  serviceAccountTemplate: {{ tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- with .Values.global.imagePullSecrets }}
+  imagePullSecrets:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- if .Values.automation.postgres.backups.enabled }}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: {{ .Values.automation.postgres.name }}
+  {{- end }}
+  {{- with .Values.automation.postgres.nodeSelector }}
+  affinity:
+    nodeSelector: {{ tpl (toYaml .) $ | nindent 6 }}
+  {{- end }}
+  {{- if and (gt (int .Values.automation.postgres.replicas) 1) (not .Values.automation.postgres.topologySpreadConstraints) }}
+  topologySpreadConstraints:
+    - topologyKey: topology.kubernetes.io/zone
+      maxSkew: 1
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: {{ .Values.automation.postgres.name }}
+    - topologyKey: kubernetes.io/hostname
+      maxSkew: 1
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: {{ .Values.automation.postgres.name }}
+  {{- end }}
+  {{- with .Values.automation.postgres.topologySpreadConstraints }}
+  topologySpreadConstraints:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+{{- end }}

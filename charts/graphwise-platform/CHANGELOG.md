@@ -2,6 +2,45 @@
 
 Changelog for the Graphwise Platform Helm chart.
 
+## 0.4.0
+
+### Breaking
+
+- Refactored the Graph Automation PostgreSQL instance to serve multiple databases for different Graph Automation
+  services worker services, each with its own database credentials. The CNPG cluster has been renamed to
+  `graph-automation-postgres` (from `graph-automation-workflows-postgres`) to better serve the new services. The new
+  databases are:
+  - `graph-automation-workflows` - operational database for the Graphwise Workflows (previosly `workflows`)
+  - `graph-automation-ingestion`- a new database for the Document Ingestion workflows
+  - `graph-automation-chunker` - a new database for the Document Chunker services: Chunker API, Chunker Store, Chunker
+    Parse and Chunker Sectioning
+
+### New
+
+- Included [Mirror App Helm chart](https://github.com/poolparty-semantic-suite/charts) as part of
+  the Graphwise Platform deployment. It is disabled by default, so you have to enable it. You can configure it with the
+  `mirror-app` configuration section.
+- Added deployment of a Kafka cluster for the Graph Automation services, managed by the Strimzi operator, see
+  `automation.kafka` for configurations and details.
+- Added deployment of NFS-backed PVCs for the Graph Automation services, see `automation.nfs` for more details.
+
+### Updated
+
+- Updated the Graph Automation Helm chart to version 0.4.0 bringing Graph Automation 1.0.0 and the new Kafka worker
+  services:
+  - Morph-KGC
+  - Document Chunker API
+  - Document Chunker Store
+  - Document Chunker Parse
+  - Document Chunker Sectioning
+- Updated Elasticsearch to version 9.4.8 (`ontotext/poolparty-elasticsearch:9.4.8`)
+- Updated Keycloak to version 2.6.2 (`ontotext/poolparty-keycloak:2.6.2`)
+- Updated GraphDB to version 11.5.2 with chart 12.6.3
+- Updated Graph Modeling to version 10.3.3 with chart 1.1.1
+- Updated ADF chart version to 1.1.0
+- Updated Semantic Workbench chart version 1.1.0
+- Updated the secrets' generation to handle the new PostgreSQL database roles
+
 ## 0.3.0
 
 ### Breaking
@@ -13,7 +52,7 @@ migration and upgrade guidelines.
   Workflows Helm chart. See
   the [Upgrade guide](https://github.com/poolparty-semantic-suite/graphrag-charts/blob/graphrag-2.0.1/charts/graphrag/UPGRADE.md#200)
   for more details.
-- Configured `graphrag.workflows.name` so you need to re-create the Deplyoment resource if GraphRAG has been enabled.
+- Configured `graphrag.workflows.name` so you need to re-create the Deployment resource if GraphRAG has been enabled.
 - Upgraded Graph Modeling to version 10.3.2 (chart 1.0.1), check the following upgrade guides:
   - Graph Modeling Helm chart
     1.0.1 [UPGRADE.md](https://github.com/poolparty-semantic-suite/charts/blob/poolparty-1.0.1/poolparty/UPGRADE.md)

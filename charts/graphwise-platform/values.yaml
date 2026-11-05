@@ -111,7 +111,7 @@ elasticsearch:
   image:
     registry: docker.io
     repository: ontotext/poolparty-elasticsearch
-    tag: 9.4.5
+    tag: 9.4.8
     digest: ""
 
   # Number of Elasticsearch nodes to deploy in the cluster.
@@ -266,7 +266,7 @@ keycloak:
   image:
     registry: docker.io
     repository: ontotext/poolparty-keycloak
-    tag: 2.6.1
+    tag: 2.6.2
     digest: ""
 
   # Number of Keycloak instances to deploy.
@@ -1069,6 +1069,65 @@ semantic-workbench:
     limits:
       memory: 2Gi
 
+# Mirror App configuration overrides.
+#
+# Mirror App is an addon for the Graph Modeling service.
+#
+# Important: You need to prepare and provide a server configuration file "Server-map.json" for the Mirror App to be
+# able to use it. Please refer to our official documentation for more details.
+#
+# You can check the following reference for the full set of configuration options:
+# Ref: https://github.com/poolparty-semantic-suite/charts
+mirror-app:
+  # Toggles the deployment of the Mirror App service.
+  enabled: false
+
+  # Overrides the default name of the Mirror App service for easier referencing in the rest of the services.
+  fullnameOverride: mirror-app
+
+  # Mirror App configuration settings.
+  configuration:
+    # The external URL at which Mirror App should be accessible.
+    externalUrl: '{{ include "graphwise-platform.url" . }}/PoolParty/mirror'
+
+    # Additional Mirror App configurations that will be appended to mirror-app.properties.
+    properties:
+      PORT: 8080
+
+    # Provisioning of an external Server-map.json file.
+    existingServerMap:
+      # Reference to an existing Secret resource containing the Server-map.json configuration.
+      secret: ""
+      # Key in the existing Secret resource that holds the content of the Server-map.json configuration.
+      secretKey: Server-map.json
+      # The path where the Server-map.json configuration will be mounted.
+      mountPath: path/to/Server-map.json
+
+    # Gunicorn arguments to apply on application startup.
+    gunicornArguments: ""
+
+  # Ingress configuration.
+  # Refer to the official chart for further details.
+  ingress:
+    enabled: false
+
+  service:
+    ports:
+      http: 8080
+
+  # Selector labels to match when selecting nodes.
+  nodeSelector: {}
+
+  # Configurations for spreading Pods across different failure domains.
+  topologySpreadConstraints: []
+
+  # Resource configurations for the Mirror App pod.
+  resources:
+    requests:
+      memory: 256Mi
+    limits:
+      memory: 256Mi
+
 ########################################################################################################################
 # GRAPHWISE PLATFORM - GRAPH AUTOMATION SERVICES
 ########################################################################################################################
@@ -1109,11 +1168,14 @@ automation:
         existingSecret: graph-automation-workflows-encryption
 
       # Database configurations for the Graph Automation Workflows service.
+      #
+      # The values are tuned for the PostgreSQL cluster deployed via automation.postgres.
+      # If you have an existing PostgreSQL cluster, make sure to update these accordingly.
       postgresdb:
-        host: graph-automation-workflows-postgres-rw
-        database: graph-automation
+        host: graph-automation-postgres-rw
+        database: graph-automation-workflows
         credentials:
-          existingSecret: graph-automation-workflows-postgres-app
+          existingSecret: graph-automation-workflows-postgres-password
           usernameKey: username
           passwordKey: password
 
@@ -1136,10 +1198,9 @@ automation:
       annotations: {}
 
     # Persistence configurations for Graph Automation Workflows.
-    # Disabled by default.
+    # Disabled by default as everything is persisted in Postgres or configured via ENV variables.
     persistence:
       enabled: false
-
       volumeClaim:
         spec:
           # You can pass an explicit storage class name here or rely on the default storage class in your
@@ -1150,6 +1211,24 @@ automation:
           resources:
             requests:
               storage: 2Gi
+
+    # Extra volume and volume mount for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Workflows service and Kafka workers.
+    #
+    # The values are tuned for the NFS volume deployed via automation.nfs.
+    # If you have an existing NFS persistence layer, make sure to update these accordingly.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains.
+    extraVolumes:
+      - name: data-share
+        persistentVolumeClaim:
+          claimName: graph-automation-workflows-nfs
+
+    # The Workflows write BLOBs at /data so make sure to keep this unchanged.
+    extraVolumeMounts:
+      - name: data-share
+        mountPath: /data
 
     # Resource configurations for the Graph Automation Workflows pods.
     resources:
@@ -1198,20 +1277,20 @@ automation:
           memory: 256Mi
           cpu: 100m
 
-  # PostgreSQL for Graph Automation Workflows.
+  # PostgreSQL for Graph Automation services.
   #
-  # This chart deploys a PostgreSQL database cluster for the Graph Automation Workflows using the CNPG Kubernetes operator.
+  # This chart deploys a PostgreSQL database cluster for the Graph Automation services using the CNPG Kubernetes operator.
   #
   # You can use your own PostgreSQL but have to provide the necessary configuration overrides to the rest of the
   # services so they can connect to it.
   #
   # Ref: https://cloudnative-pg.io/docs
-  workflows_postgres:
+  postgres:
     # Toggles the deployment of the PostgreSQL database cluster.
     enabled: true
 
     # Name and name prefix for the PostgreSQL database cluster resources.
-    name: graph-automation-workflows-postgres
+    name: graph-automation-postgres
 
     # Number of database nodes to deploy in the PostgreSQL cluster.
     # Set value to 1 to run a standalone PostgreSQL instance.
@@ -1227,10 +1306,56 @@ automation:
       tag: 16.14-standard-trixie
       digest: ""
 
-    # Configurations for the Graph Automation Workflows PostgreSQL database cluster.
-    database:
-      name: graph-automation
-      owner: graph-automation
+    # Configurations for the Graph Automation databases.
+    #
+    # By default, Graph Automation requires databases for the following:
+    # 1) Graphise Workflows (n8n)
+    # 2) Document Ingestion workflows
+    # 3) Document Chunker services
+    #
+    # If needed, you can insert additional databases in this map, following the existing structure.
+    databases:
+      workflows:
+        # Name of the CNPG's Database resource and the database in Postgres
+        name: graph-automation-workflows
+        # The role that owns the database
+        owner: graph-automation-workflows
+        # Policy for reclaiming the database after the Database resource has been deleted
+        databaseReclaimPolicy: retain
+      ingestion:
+        name: graph-automation-ingestion
+        owner: graph-automation-ingestion
+        databaseReclaimPolicy: retain
+      chunker:
+        name: graph-automation-chunker
+        owner: graph-automation-chunker
+        databaseReclaimPolicy: retain
+
+    # Configurations for managing Graph Automation database roles.
+    #
+    # The default roles cover the default databases created in automation.postgres.databases.
+    #
+    # If needed, you can insert additional database roles in this map, following the existing structure.
+    roles:
+      workflows:
+        # Name of the CNPG's DatabaseRole resource and the role in PostgreSQL
+        name: graph-automation-workflows
+        # Because the CNPG operator does not yet support auto-generation of passwords for the different users,
+        # you have to prepare and provide them for each DatabaseRole.
+        passwordSecret:
+          name: graph-automation-workflows-postgres-password
+        # Policy for reclaiming the database after the DatabaseRole resource has been deleted
+        databaseRoleReclaimPolicy: retain
+      ingestion:
+        name: graph-automation-ingestion
+        passwordSecret:
+          name: graph-automation-ingestion-postgres-password
+        databaseRoleReclaimPolicy: retain
+      chunker:
+        name: graph-automation-chunker
+        passwordSecret:
+          name: graph-automation-chunker-postgres-password
+        databaseRoleReclaimPolicy: retain
 
     # Configurations for the PostgreSQL database cluster. Passed directly to the CustomResource.
     postgresql:
@@ -1294,12 +1419,608 @@ automation:
 
     # Configurations for spreading Pods across different failure domains.
     # By default, the chart will assign default topology spread constraints
-    # if graph-automation.workflows_postgres.replicas > 1, but you can override them with this
+    # if automation.postgres.replicas > 1, but you can override them with this
     # regardless of the replicas value.
     #
     # Values are processed as Helm templates.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+    topologySpreadConstraints: []
+
+  # Kafka cluster configuration settings.
+  #
+  # This chart can deploy a Kafka cluster needed by the Graph Automation services. It uses the CNCF Strimzi operator
+  # project for deploying and managing Kafka clusters.
+  #
+  # You can use any other Kafka operators and providers as long as you properly reconfigure all affected
+  # Graph Automation services.
+  #
+  # Ref: https://strimzi.io/
+  kafka:
+    # Toggles the deployment of the Kafka cluster for Graph Automation.
+    enabled: true
+
+    # Name and name prefix for the Kafka cluster resources
+    clusterName: graph-automation
+
+    # Name of the shared node pool for the Kafka cluster.
+    nodePoolName: kafka-shared-pool
+
+    # Number of Kafka nodes to deploy in the Kafka cluster.
+    # Set value to 1 to run a standalone Kafka instance.
+    # Set to 2 or more to run a multi-node Kafka cluster.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#replicas
+    replicas: 1
+
+    # Kafka version to deploy.
+    version: "4.3.1"
+
+    # KRaft metadata version to use.
+    metadataVersion: "4.3"
+
+    # Kafka configuration settings.
+    # Ref: https://kafka.apache.org/43/configuration/
+    configuration:
+      auto.create.topics.enable: false
+      default.replication.factor: 1
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+
+    # Extra JVM options for Kafka.
+    # If you configure -Xms or -Xmx, make sure to set them according to the configured memory limit in automation.kafka.resources.
+    # Ref: https://kafka.apache.org/43/configuration/
+    jvmOptions: {}
+
+    # Kafka listeners configurations.
+    listeners:
+      # Plain (unencrypted) listener
+      plain:
+        enabled: true
+        port: 9092
+      # Encrypted (TLS) listener
+      tls:
+        enabled: true
+        port: 9093
+
+    # Authentication settings for clients connecting to Kafka.
+    authentication:
+      type: scram-sha-512
+
+    # Authorization settings for clients
+    authorization:
+      type: simple
+
+    # Persistence configurations for the Kafka cluster's KafkaNodePool.
+    # The default storage type is JBOD (just a bunch of disks).
+    persistence:
+      # Storage size for the assigned PVCs.
+      size: 10Gi
+      # Explicit storage class to use for the Kafka cluster.
+      # Leave empty to use the default storage class in your Kubernetes cluster.
+      class: ""
+      # Set to true if you want your PVC to be deleted after removing this node pool
+      deleteClaim: false
+      # Additional persistence volumes to add to the JBOD set.
+      extraVolumes: []
+
+    # Resource configurations for the Kafka pods.
+    # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+    resources:
+      requests:
+        memory: 2Gi
+      limits:
+        memory: 2Gi
+
+    # Selector labels to match when selecting nodes.
+    # Values are processed as Helm templates with the tpl function.
+    # Important: This will be ignored if automation.kafka.affinity is configured!
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    nodeSelector: {}
+
+    # Node and pod affinity & anti-affinity configurations for constraining the Pod scheduling.
+    # Values are processed as Helm templates with the tpl function.
+    # Important: This takes precedence over automation.kafka.nodeSelector!
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+    affinity: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    # By default, the chart will assign default topology spread constraints
+    # if automation.kafka.replicas > 1, but you can override them with this
+    # regardless of the replicas value.
+    #
+    # Values are processed as Helm templates.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+    topologySpreadConstraints: []
+
+  # NFS persistence configurations for the Graph Automation services.
+  #
+  # Currently, the Graph Automation services need to store and read files from a shared file system across pods and nodes.
+  # This chart can deploy NFS-backed PersistentVolumeClaims given the cluster has a configured NFS dynamic
+  # PersistentVolume provisioner, such as NFS Ganesha, AWS EFS or Azure Files.
+  #
+  # The default storage class is tuned for the NFS Ganesha deployment from the scripts/controllers.sh example.
+  #
+  # For production, it is recommended to use an enterprise grade NFS provider like AWS NFS or Azure Storage.
+  #
+  # If you don't have a provisioner, you need to provide and configure ReadWriteMany volumes yourself and make sure to
+  # update all references to these volumes in the Graph Automation services.
+  nfs:
+    # Toggles the deployment of NFS PVCs.
+    enabled: true
+    # PersistentVolumeClaims to create.
+    # The chart will iterate over this map and create all the provided PVC manifests.
+    volumeClaims:
+      # NFS PVC for the Graphwise Workflows.
+      # This PVC is typically used for sharing files between the workflows and the MorphKGC Kafka worker.
+      workflows:
+        enabled: true
+        name: graph-automation-workflows-nfs
+        labels: {}
+        annotations: {}
+        spec:
+          storageClassName: nfs
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 10Gi
+      # NFS PVC for the Document Chunker Kafka workers.
+      chunker:
+        enabled: true
+        name: graph-automation-chunker-nfs
+        labels: {}
+        annotations: {}
+        spec:
+          storageClassName: nfs
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 10Gi
+
+  # Document Ingestion configurations.
+  # These configurations are related to the ingestion workflows in the Graphwise Workflows service.
+  ingestion:
+    # Kafka configurations for the Document Ingestion workflows.
+    kafka:
+      # Toggles the creation of Kafka topics via the Strimzi operator.
+      # If you are not using Strimzi, you have to provision the necessary topics and disable this.
+      enabled: true
+      # Access Control Lists (permissions) configurations
+      acl:
+        topicsPrefix: ingestion-step
+        groupPrefix: ingestion-step
+      # Topics mapping.
+      # If needed, you can add additional topics here, following the same structure.
+      topics:
+        tagging:
+          # Name of the Strimzi's KafkaTopic resource
+          name: graph-automation-document-ingestion-tagging
+          # Name of the topic in Kafka
+          topicName: ingestion-step-tagging
+          partitions: 2
+          replicas: 1
+          # Standard Kafka topic configurations
+          config:
+            retention.ms: 86400000
+        vectorization:
+          name: graph-automation-document-ingestion-vectorization
+          topicName: ingestion-step-vectorization
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        faceting:
+          name: graph-automation-document-ingestion-faceting
+          topicName: ingestion-step-faceting
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        rdfization:
+          name: graph-automation-document-ingestion-rdfization
+          topicName: ingestion-step-rdfization
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        chunking:
+          name: graph-automation-document-ingestion-chunking
+          topicName: ingestion-step-chunking
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+
+  # Graph Automation Morph-KGC Kafka worker configurations.
+  #
+  # This service materializes RDF knowledge graphs from source data based on mapping files.
+  morphkgc:
+    # Toggles the deployment of the Graph Automation's Morph-KGC Kafka worker.
+    enabled: true
+
+    # Name and name prefix for the Morph-KGC worker resources.
+    nameOverride: morph-kgc
+    fullnameOverride: graph-automation-morphkgc
+
+    # Number of Morph-KGC Kafka worker pods to deploy.
+    replicas: 1
+
+    # Graph Automation Morph-KGC worker runtime configuration settings.
+    configuration:
+      # Configuration properties inserted as environment variables in the container.
+      # Values are processed as Helm templates.
+      properties:
+        KAFKA_JOBS_TOPIC: graph-automation.morphkgc.jobs
+        KAFKA_RESULTS_TOPIC: graph-automation.morphkgc.results
+        KAFKA_CONSUMER_GROUP_ID: graph-automation.morphkgc
+
+      # Configurations for connecting to Kafka.
+      #
+      # The values are tuned for the Kafka cluster deployed via automation.kafka.
+      # Make sure to update them accordingly if you have an existing Kafka cluster.
+      kafka:
+        servers: graph-automation-kafka-bootstrap:9092
+        security:
+          protocol: SASL_PLAINTEXT
+          sasl:
+            mechanism: SCRAM-SHA-512
+            credentials:
+              existingSecret: graph-automation-morphkgc-kafka-user
+              username: graph-automation-morphkgc-kafka-user
+              passwordKey: password
+
+    # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Workflows service and the Morph-KGC worker.
+    #
+    # The value is tuned for the NFS PVC deployed via automation.nfs.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains. You have another NFS provider, make sure to update this.
+    sharedVolume:
+      existingVolumeClaim:
+        claimName: graph-automation-workflows-nfs
+
+    # Resource configurations for the Morph-KFC worker pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+    # Kafka configurations for the MorphKGC worker.
+    # Note: This section does not exist in the subchart, it is used by the Strimzi resources in this chart.
+    kafka:
+      # Access Control Lists (permissions) configurations
+      acl:
+        topicsPrefix: graph-automation.morphkgc
+        groupPrefix: graph-automation.morphkgc
+      # Topics mapping.
+      topics:
+        jobs:
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        results:
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+
+  #
+  # Chunker services
+  #
+
+  # Common configurations for the Document Chunker services.
+  chunker:
+    # Common Kafka configurations for the Document Chunker services.
+    kafka:
+      # Access Control Lists (permissions) configurations
+      acl:
+        topicsPrefix: graph-automation.chunker
+        groupPrefix: graph-automation.chunker
+      # Kafka topics configurations for the Document Chunker services.
+      topics:
+        store:
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        parse:
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+        sectioning:
+          partitions: 2
+          replicas: 1
+          config:
+            retention.ms: 86400000
+
+  # Graphwise Graph Automation Document Chunker API configurations.
+  chunkerAPI:
+    # Toggles the deployment of the Graph Automation Chunker API service.
+    enabled: true
+
+    # Name and name prefix for the Chunker API service resources.
+    nameOverride: chunker-api
+    fullnameOverride: graph-automation-chunker-api
+
+    # Number of Chunker API service pods to deploy.
+    replicas: 1
+
+    # Graph Automation Chunker API runtime configuration settings.
+    configuration:
+      # Configuration properties inserted as environment variables in the container.
+      # Values are processed as Helm templates.
+      properties: {}
+
+      # Configurations for connecting to Kafka.
+      # The values are tuned for the Kafka cluster deployed via automation.kafka.
+      # Make sure to update them accordingly if you have an existing Kafka cluster.
+      kafka:
+        servers: graph-automation-kafka-bootstrap:9092
+        security:
+          protocol: SASL_PLAINTEXT
+          sasl:
+            mechanism: SCRAM-SHA-512
+            credentials:
+              existingSecret: graph-automation-chunker-kafka-user
+              username: graph-automation-chunker-kafka-user
+              passwordKey: password
+
+      # Configurations for connecting the Chunker service to a PostgreSQL database.
+      # The values are tuned for the PostgreSQL cluster deployed via automation.postgres.
+      # If you have an existing PostgreSQL cluster, make sure to update these accordingly.
+      postgresdb:
+        host: graph-automation-postgres-rw
+        database: graph-automation-chunker
+        credentials:
+          existingSecret: graph-automation-chunker-postgres-password
+          usernameKey: username
+          passwordKey: password
+
+    # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Document Chunker services.
+    #
+    # The value is tuned for the NFS PVC deployed via automation.nfs.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains. You have another NFS provider, make sure to update this.
+    uploadsVolume:
+      existingVolumeClaim:
+        claimName: graph-automation-chunker-nfs
+
+    # Resource configurations for the Chunker API pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+  # Graphwise Graph Automation Document Chunker Store configurations.
+  chunkerStore:
+    # Toggles the deployment of the Graph Automation Chunker Store service.
+    enabled: true
+
+    # Name and name prefix for the Chunker API service resources.
+    nameOverride: chunker-store
+    fullnameOverride: graph-automation-chunker-store
+
+    # Number of Chunker Store service pods to deploy.
+    replicas: 1
+
+    # Graph Automation Chunker Store runtime configuration settings.
+    configuration:
+      # Configuration properties inserted as environment variables in the container.
+      # Values are processed as Helm templates.
+      properties:
+        STORE_TOPIC: graph-automation.chunker.store
+        STORE_GROUP: graph-automation.chunker.store-v1
+
+      # Configurations for connecting to Kafka.
+      # The values are tuned for the Kafka cluster deployed via automation.kafka.
+      # Make sure to update them accordingly if you have an existing Kafka cluster.
+      kafka:
+        servers: graph-automation-kafka-bootstrap:9092
+        security:
+          protocol: SASL_PLAINTEXT
+          sasl:
+            mechanism: SCRAM-SHA-512
+            credentials:
+              existingSecret: graph-automation-chunker-kafka-user
+              username: graph-automation-chunker-kafka-user
+              passwordKey: password
+
+      # Configurations for connecting the Chunker service to a PostgreSQL database.
+      # The values are tuned for the PostgreSQL cluster deployed via automation.postgres.
+      # If you have an existing PostgreSQL cluster, make sure to update these accordingly.
+      postgresdb:
+        host: graph-automation-postgres-rw
+        database: graph-automation-chunker
+        credentials:
+          existingSecret: graph-automation-chunker-postgres-password
+          usernameKey: username
+          passwordKey: password
+
+    # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Document Chunker services.
+    #
+    # The value is tuned for the NFS PVC deployed via automation.nfs.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains. You have another NFS provider, make sure to update this.
+    uploadsVolume:
+      existingVolumeClaim:
+        claimName: graph-automation-chunker-nfs
+
+    # Resource configurations for the Chunker Store pods.
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        memory: 256Mi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+  # Graphwise Graph Automation Document Chunker Parse configurations.
+  chunkerParse:
+    # Toggles the deployment of the Graph Automation Chunker Parse service.
+    enabled: true
+
+    # Name and name prefix for the Chunker API service resources.
+    nameOverride: chunker-parse
+    fullnameOverride: graph-automation-chunker-parse
+
+    # Number of Chunker Parse service pods to deploy.
+    replicas: 1
+
+    # Graph Automation Chunker Parse runtime configuration settings.
+    configuration:
+      # Configuration properties inserted as environment variables in the container.
+      # Values are processed as Helm templates.
+      properties:
+        PARSE_TOPIC: graph-automation.chunker.parse
+        PARSE_GROUP: graph-automation.chunker.parse-v1
+
+      # Configurations for connecting to Kafka.
+      # The values are tuned for the Kafka cluster deployed via automation.kafka.
+      # Make sure to update them accordingly if you have an existing Kafka cluster.
+      kafka:
+        servers: graph-automation-kafka-bootstrap:9092
+        security:
+          protocol: SASL_PLAINTEXT
+          sasl:
+            mechanism: SCRAM-SHA-512
+            credentials:
+              existingSecret: graph-automation-chunker-kafka-user
+              username: graph-automation-chunker-kafka-user
+              passwordKey: password
+
+      # Configurations for connecting the Chunker service to a PostgreSQL database.
+      # The values are tuned for the PostgreSQL cluster deployed via automation.postgres.
+      # If you have an existing PostgreSQL cluster, make sure to update these accordingly.
+      postgresdb:
+        host: graph-automation-postgres-rw
+        database: graph-automation-chunker
+        credentials:
+          existingSecret: graph-automation-chunker-postgres-password
+          usernameKey: username
+          passwordKey: password
+
+    persistence:
+      enabled: true
+
+    # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Document Chunker services.
+    #
+    # The value is tuned for the NFS PVC deployed via automation.nfs.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains. You have another NFS provider, make sure to update this.
+    uploadsVolume:
+      existingVolumeClaim:
+        claimName: graph-automation-chunker-nfs
+
+    # Resource configurations for the Chunker Parse pods.
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 1Gi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
+    topologySpreadConstraints: []
+
+  # Graphwise Graph Automation Document Chunker Sectioning configurations.
+  chunkerSectioning:
+    # Toggles the deployment of the Graph Automation Chunker Sectioning service.
+    enabled: true
+
+    # Name and name prefix for the Chunker API service resources.
+    nameOverride: chunker-sectioning
+    fullnameOverride: graph-automation-chunker-sectioning
+
+    # Number of Chunker Sectioning service pods to deploy.
+    replicas: 1
+
+    # Graph Automation Chunker Sectioning runtime configuration settings.
+    configuration:
+      # Configuration properties inserted as environment variables in the container.
+      # Values are processed as Helm templates.
+      properties:
+        SECTIONING_TOPIC: graph-automation.chunker.sectioning
+        SECTIONING_GROUP: graph-automation.chunker.sectioning-v1
+
+      # Configurations for connecting to Kafka.
+      # The values are tuned for the Kafka cluster deployed via automation.kafka.
+      # Make sure to update them accordingly if you have an existing Kafka cluster.
+      kafka:
+        servers: graph-automation-kafka-bootstrap:9092
+        security:
+          protocol: SASL_PLAINTEXT
+          sasl:
+            mechanism: SCRAM-SHA-512
+            credentials:
+              existingSecret: graph-automation-chunker-kafka-user
+              username: graph-automation-chunker-kafka-user
+              passwordKey: password
+
+      # Configurations for connecting the Chunker service to a PostgreSQL database.
+      # The values are tuned for the PostgreSQL cluster deployed via automation.postgres.
+      # If you have an existing PostgreSQL cluster, make sure to update these accordingly.
+      postgresdb:
+        host: graph-automation-postgres-rw
+        database: graph-automation-chunker
+        credentials:
+          existingSecret: graph-automation-chunker-postgres-password
+          usernameKey: username
+          passwordKey: password
+
+    # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
+    # the Document Chunker services.
+    #
+    # The value is tuned for the NFS PVC deployed via automation.nfs.
+    #
+    # Important: This volume must support ReadWriteMany access mode so Kubernetes can schedule the services across
+    # different nodes and failure domains. You have another NFS provider, make sure to update this.
+    uploadsVolume:
+      existingVolumeClaim:
+        claimName: graph-automation-chunker-nfs
+
+    # Resource configurations for the Chunker Sectioning pods.
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        memory: 256Mi
+
+    # Selector labels to match when selecting nodes.
+    nodeSelector: {}
+
+    # Configurations for spreading Pods across different failure domains.
     topologySpreadConstraints: []
 
 ########################################################################################################################

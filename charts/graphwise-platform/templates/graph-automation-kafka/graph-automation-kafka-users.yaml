@@ -1,0 +1,127 @@
+{{- if and .Values.automation.enabled .Values.automation.kafka.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ printf "%s-workflows-kafka-user" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  authentication:
+    type: {{ .Values.automation.kafka.authentication.type }}
+  authorization:
+    type: {{ .Values.automation.kafka.authorization.type }}
+    acls:
+      - resource:
+          type: topic
+          name: {{ .Values.automation.ingestion.kafka.acl.topicsPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: {{ .Values.automation.ingestion.kafka.acl.groupPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      {{- if .Values.automation.morphkgc.enabled }}
+      # The Workflows user should be able to trigger the morphkgc service
+      - resource:
+          type: topic
+          name: {{ .Values.automation.morphkgc.kafka.acl.topicsPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: {{ .Values.automation.morphkgc.kafka.acl.groupPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      {{- end }}
+{{- if .Values.automation.morphkgc.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ printf "%s-morphkgc-kafka-user" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  authentication:
+    type: {{ .Values.automation.kafka.authentication.type }}
+  authorization:
+    type: {{ .Values.automation.kafka.authorization.type }}
+    acls:
+      - resource:
+          type: topic
+          name: {{ .Values.automation.morphkgc.kafka.acl.topicsPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: {{ .Values.automation.morphkgc.kafka.acl.groupPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+{{- end }}
+{{- if or .Values.automation.chunkerStore.enabled .Values.automation.chunkerParse.enabled  .Values.automation.chunkerSectioning.enabled }}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ printf "%s-chunker-kafka-user" .Values.automation.kafka.clusterName | trunc 63 | trimSuffix "-" }}
+  labels:
+    strimzi.io/cluster: {{ .Values.automation.kafka.clusterName }}
+    {{- include "graphwise-platform.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  authentication:
+    type: {{ .Values.automation.kafka.authentication.type }}
+  authorization:
+    type: {{ .Values.automation.kafka.authorization.type }}
+    acls:
+      - resource:
+          type: topic
+          name: {{ .Values.automation.chunker.kafka.acl.topicsPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+      - resource:
+          type: group
+          name: {{ .Values.automation.chunker.kafka.acl.groupPrefix }}
+          patternType: prefix
+        operations:
+          - Read
+          - Write
+          - Describe
+{{- end }}
+{{- end }}
