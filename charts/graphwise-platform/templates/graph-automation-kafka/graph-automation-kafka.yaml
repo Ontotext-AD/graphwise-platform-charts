@@ -36,6 +36,9 @@ spec:
     config:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    jvmOptions:
+      "-XX":
+        UseBASE64Intrinsics: "false"
   entityOperator:
     topicOperator: {}
     userOperator: {}

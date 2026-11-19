@@ -80,9 +80,12 @@ spec:
               {{- with .Values.elasticsearch.resources }}
               resources: {{ toYaml . | nindent 16 }}
               {{- end }}
-              {{- with .Values.elasticsearch.env }}
-              env: {{ tpl (toYaml .) $ | nindent 16 }}
-              {{- end }}
+              env:
+                - name: ES_JAVA_OPTS
+                  value: {{ .Values.elasticsearch.javaOpts }}
+                {{- with .Values.elasticsearch.env }}
+                  {{- tpl (toYaml .) $ | nindent 16 }}
+                {{- end }}
               {{- if or .Values.elasticsearch.entitlementPolicy.enabled .Values.elasticsearch.volumes }}
               volumeMounts:
                 {{- if .Values.elasticsearch.entitlementPolicy.enabled }}
