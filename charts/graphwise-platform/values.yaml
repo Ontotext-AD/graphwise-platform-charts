@@ -178,6 +178,9 @@ elasticsearch:
     # Values are processed as Helm templates with the tpl function.
     annotations: {}
 
+  # Java options to set to Elastic's ES_JAVA_OPTS environment variable.
+  javaOpts: "-XX:-UseBASE64Intrinsics"
+
   # Additional environment variables to provide to the Elasticsearch cluster.
   # Values are processed as Helm templates with the tpl function.
   env: []
@@ -286,6 +289,7 @@ keycloak:
     properties:
       POOLPARTY_KEYCLOAK_REALM: poolparty
       SUPERADMIN_REQUIRES_ACTIONS: false
+      JAVA_OPTS_APPEND: "-XX:-UseBASE64Intrinsics"
 
     # Reference to a Secret object containing the credentials for the Keycloak admin user.
     # This is used only during the initial Keycloak bootstrap which initializes the instance.
@@ -1179,9 +1183,15 @@ automation:
           usernameKey: username
           passwordKey: password
 
-    # No bootstrap automation for Graph Automation Workflows yet.
+    # Bootstrap automation for Graph Automation Workflows.
     bootstrap:
-      enabled: false
+      # Toggles the bootstrap Job deployment.
+      enabled: true
+
+      # Helm hook configurations.
+      hook:
+        annotations:
+          helm.sh/hook: post-install, post-upgrade
 
     # Ingress configuration for the Graph Automation Workflows service.
     #
@@ -1789,6 +1799,13 @@ automation:
           usernameKey: username
           passwordKey: password
 
+    # Security configurations of the Chunker API.
+    security:
+      # Configurations for a secure token that protects the REST API of the Document Chunker.
+      token:
+        existingSecret: graph-automation-chunker-api-token
+        tokenKey: SECRET_TOKEN
+
     # PeristentVolumeClaim for a persistence layer for sharing BLOBs (files, documents etc.) between
     # the Document Chunker services.
     #
@@ -2101,10 +2118,8 @@ graphrag:
         cors.disable: false
         # N8N Settings
         n8n.base.url: http://graphrag-workflows:5678
-        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat?questionId={questionId}&conversationId={conversationId}&userId={userId}&question={question}&custom={custom}
+        n8n.chat.webhook.url: http://graphrag-workflows:5678/webhook/n8n/chat
         # Keycloak settings
-        spring.security.oauth2.client.registration.keycloak.scope: openid
-        spring.security.oauth2.client.registration.keycloak.client-id: graphrag-conversation
         spring.security.oauth2.resourceserver.jwt.jwk-set-uri: http://keycloak-service.keycloak:8080/auth/realms/poolparty/protocol/openid-connect/certs
         spring.security.oauth2.resourceserver.jwt.issuer-uri: '{{ include "graphwise-platform.url" . }}/auth/realms/poolparty'
         keycloak.health.url: http://keycloak-service.keycloak:9000/auth/health
@@ -2122,13 +2137,26 @@ graphrag:
           usernameKey: username
           passwordKey: password
 
-      # Configurations for Keycloak as an identity provider.
-      # Note the references to the Kubernetes Secret: If you have created it with a different name, you need
-      # to update it here.
-      keycloak:
-        oauth2_client:
-          existingSecret: graphrag-conversation-keycloak-secrets
-          clientSecretKey: client-secret
+      # Configurations for connecting to GraphDB.
+      # See the sub-chart for all configuration settings.
+      graphdb:
+        url: http://graphdb:7200
+        auth:
+          type: basic
+          basic:
+            existingSecret: graphdb-admin-credentials
+            usernameKey: username
+            passwordKey: password
+
+      # Configurations for connecting to Elasticsearch.
+      # See the sub-chart for all configuration settings.
+      elasticsearch:
+        url: http://elasticsearch:9200
+        auth:
+          basic:
+            existingSecret: elasticsearch-es-elastic-user
+            username: elastic
+            passwordKey: elastic
 
     # Persistence configurations for GraphRAG Conversation service.
     persistence:
