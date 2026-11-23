@@ -2,6 +2,30 @@
 
 Changelog for the Graphwise Platform Helm chart.
 
+## 0.5.0
+
+### Breaking
+
+- Graph Automation's Document Chunker API now requires a mandatory SECRET_TOKEN for basic HTTP API protection. Make sure
+  to create a Secret containing this token and update `automation.chunkerAPI.security.token` if needed.
+
+### Updated
+
+- Updated `graphdb` chart to version 12.7.3 with GraphDB 11.5.3
+- Updated `poolparty` chart to version 1.1.2
+- Updated `adf` chart to version 1.1.1
+- Updated `graphviews` chart to version 0.2.1
+- Updated `semantic-workbench` chart to version 1.1.1
+- Updated `graphwise-graph-automation` chart to version 0.5.0 with Graph Automation 1.1.0
+- Updated `graphrag` chart to version 3.0.1 with GraphRAG 2.0.0
+- Updated the secrets' generation to prepare a secret token for the Document Chunker API
+- Removed configurations related to the confidential Keycloak client for GraphRAG's Conversation service as they are not
+  being used
+
+### Fixed
+
+- Fixed the secret generation in secrets.yaml for Graph Automation to render correct booleans labels
+
 ## 0.4.0
 
 ### Breaking
