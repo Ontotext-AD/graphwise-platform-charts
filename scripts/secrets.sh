@@ -28,9 +28,9 @@ export GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME="graph-automati
 export GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-workflows-postgres-password"
 export GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-ingestion-postgres-password"
 export GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME="graph-automation-chunker-postgres-password"
+export GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME="graph-automation-chunker-api-token"
 
 export GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME="graphrag-conversation-database-credentials"
-export GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME="graphrag-conversation-keycloak-secrets"
 export GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME="graphrag-workflows-encryption"
 
 ########################################################################################################################
@@ -134,12 +134,12 @@ cleanup_secrets() {
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}; then
     kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}
   fi
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME}; then
+    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME}
+  fi
   # GraphRAG
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
     kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}
-  fi
-  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}; then
-    kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}
   fi
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
     kubectl -n ${PLATFORM_NAMESPACE} delete secret ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}
@@ -156,12 +156,12 @@ create_secrets() {
     kubectl create namespace ${PLATFORM_NAMESPACE} || true
   fi
 
-  KEYCLOAK_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_TAXONOMY_KEYCLOAK_LOGIN_CLIENTSECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_EXTRACTOR_KEYCLOAK_LOGIN_CLIENTSECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_GRAPH_SEARCH_KEYCLOAK_LOGIN_CLIENTSECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-  GRAPH_MODELING_RECOMMENDER_KEYCLOAK_LOGIN_CLIENTSECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  KEYCLOAK_ADMIN_PASSWORD=$(openssl rand -hex 32)
+  GRAPH_MODELING_ADMIN_PASSWORD=$(openssl rand -hex 32)
+  GRAPH_MODELING_TAXONOMY_KEYCLOAK_LOGIN_CLIENTSECRET=$(openssl rand -hex 32)
+  GRAPH_MODELING_EXTRACTOR_KEYCLOAK_LOGIN_CLIENTSECRET=$(openssl rand -hex 32)
+  GRAPH_MODELING_GRAPH_SEARCH_KEYCLOAK_LOGIN_CLIENTSECRET=$(openssl rand -hex 32)
+  GRAPH_MODELING_RECOMMENDER_KEYCLOAK_LOGIN_CLIENTSECRET=$(openssl rand -hex 32)
 
   #
   # Keycloak admin credentials
@@ -200,14 +200,14 @@ create_secrets() {
   # GraphDB
   #
 
-  GRAPHDB_ADMIN_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPHDB_ADMIN_PASSWORD=$(openssl rand -hex 32)
   GRAPHDB_ADMIN_PASSWORD_BCRYPT_HASH=$(htpasswd -bnBC 10 "" "${GRAPHDB_ADMIN_PASSWORD}" | tr -d ':\n')
 
-  GRAPHDB_PROVISIONER_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPHDB_PROVISIONER_PASSWORD=$(openssl rand -hex 32)
   GRAPHDB_PROVISIONER_PASSWORD_BCRYPT_HASH=$(htpasswd -bnBC 10 "" "${GRAPHDB_PROVISIONER_PASSWORD}" | tr -d ':\n')
   GRAPHDB_PROVISIONER_TOKEN=$(echo -n "provisioner:${GRAPHDB_PROVISIONER_PASSWORD}" | base64 -w 0)
 
-  GRAPHDB_CLUSTER_TOKEN=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPHDB_CLUSTER_TOKEN=$(openssl rand -hex 32)
 
   GRAPHDB_USERS_JS=$(cat <<EOF
 {
@@ -302,7 +302,7 @@ EOF
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME} already exists, skipping..."
   else
     kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_MODELING_SECRET_PROPERTIES_SECRET_NAME} \
-            --from-literal=_POOLPARTY_ENCRYPTION_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)" \
+            --from-literal=_POOLPARTY_ENCRYPTION_PASSWORD="$(openssl rand -hex 32)" \
             --from-literal=POOLPARTY_KEYCLOAK_ADMIN_USERNAME="admin" \
             --from-literal=POOLPARTY_KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}" \
             --from-literal=POOLPARTY_PPT_KEYCLOAK_LOGIN_CLIENTSECRET="${GRAPH_MODELING_TAXONOMY_KEYCLOAK_LOGIN_CLIENTSECRET}" \
@@ -324,7 +324,7 @@ EOF
   #
   # Graph Automation Workflows encryption secret
   #
-  GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_ENCRYPTION_SECRET_NAME} already exists, skipping..."
@@ -336,7 +336,7 @@ EOF
   #
   # Graph Automation Workflows task runners auth token secret
   #
-  GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_TASK_RUNNERS_TOKEN_SECRET_NAME} already exists, skipping..."
@@ -348,7 +348,7 @@ EOF
   #
   # Graph Automation Workflows PostgreSQL credentials
   #
-  GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_WORKFLOWS_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
@@ -364,7 +364,7 @@ EOF
   #
   # Graph Automation Ingestion PostgreSQL credentials
   #
-  GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_INGESTION_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
@@ -380,7 +380,7 @@ EOF
   #
   # Graph Automation Chunker PostgreSQL credentials
   #
-  GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_CHUNKER_POSTGRES_PASSWORD_SECRET_NAME} already exists, skipping..."
@@ -394,9 +394,21 @@ EOF
   fi
 
   #
+  # Graph Automation Chunker API secret token
+  #
+  GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET=$(openssl rand -hex 32)
+
+  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME}; then
+    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME} already exists, skipping..."
+  else
+    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET_NAME} \
+            --from-literal=SECRET_TOKEN="${GRAPH_AUTOMATION_CHUNKER_API_TOKEN_SECRET}"
+  fi
+
+  #
   # GraphRAG Conversation database credentials
   #
-  GRAPHRAG_CONVERSATION_DATABASE_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPHRAG_CONVERSATION_DATABASE_PASSWORD=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_CONVERSATION_DATABASE_CREDENTIALS_SECRET_NAME} already exists, skipping..."
@@ -407,21 +419,9 @@ EOF
   fi
 
   #
-  # GraphRAG Conversation keycloak secrets
-  #
-  GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
-
-  if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME}; then
-    echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME} already exists, skipping..."
-  else
-    kubectl --namespace ${PLATFORM_NAMESPACE} create secret generic ${GRAPHRAG_CONVERSATION_KEYCLOAK_SECRETS_SECRET_NAME} \
-            --from-literal=client-secret="${GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET}"
-  fi
-
-  #
   # GraphRAG Workflows encryption secret
   #
-  GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo)
+  GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET=$(openssl rand -hex 32)
 
   if secret_exists ${PLATFORM_NAMESPACE} ${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME}; then
     echo "Secret ${PLATFORM_NAMESPACE}/${GRAPHRAG_WORKFLOWS_ENCRYPTION_SECRET_NAME} already exists, skipping..."
@@ -433,5 +433,6 @@ EOF
 
 check_binary "kubectl"
 check_binary "htpasswd"
+check_binary "openssl"
 
 main "$@"

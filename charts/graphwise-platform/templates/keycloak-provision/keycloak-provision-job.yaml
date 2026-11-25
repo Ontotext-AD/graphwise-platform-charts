@@ -89,16 +89,6 @@ spec:
             - name: GRAPHRAG_CHATBOT_URL
               value: {{ tpl .Values.keycloak_provision.clients.graphrag.chatbot.url . }}
             {{- end }}
-            {{- /* GRAPHRAG CONVERSATION PROVISIONING */}}
-            {{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
-            - name: GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_ID
-              value: {{ .Values.keycloak_provision.clients.graphrag.conversation.id }}
-            - name: GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.keycloak_provision.clients.graphrag.conversation.keycloakSecretsSecret.name }}
-                  key: {{ .Values.keycloak_provision.clients.graphrag.conversation.keycloakSecretsSecret.clientSecretKey }}
-            {{- end }}
           {{- with .Values.keycloak_provision.hook.securityContext }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -129,16 +119,5 @@ spec:
                   -s baseUrl="$GRAPHRAG_CHATBOT_URL" \
                   -s "redirectUris=[\"$GRAPHRAG_CHATBOT_URL\"]" \
                   -s "webOrigins=[\"$GRAPHRAG_CHATBOT_URL\"]"
-              {{- end }}
-              {{- if and .Values.graphrag.enabled .Values.graphrag.conversation.enabled }}
-              /scripts/keycloak-utils.sh create-client $GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_ID \
-                  -s name="GraphRAG Conversation API" \
-                  -s protocol=openid-connect \
-                  -s enabled=true \
-                  -s publicClient=false \
-                  -s standardFlowEnabled=false \
-                  -s clientAuthenticatorType=client-secret \
-                  -s serviceAccountsEnabled=true \
-                  -s secret="$GRAPHRAG_CONVERSATION_KEYCLOAK_CLIENT_SECRET"
               {{- end }}
 {{- end }}
